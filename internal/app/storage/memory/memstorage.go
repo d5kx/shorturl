@@ -2,7 +2,7 @@ package memstorage
 
 import (
 	"github.com/d5kx/shorturl/internal/app/storage"
-	"github.com/d5kx/shorturl/internal/util/err"
+	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Storage struct {
@@ -20,15 +20,15 @@ func New() Storage {
 func (s Storage) Save(l *storage.Link) (string, error) {
 
 	var sUrl string
-	var e error
+	var err error
 	isExist := true
 
 	for isExist {
-		sUrl, e = l.ShortURL()
-		isExist, e = s.IsExist(sUrl)
+		sUrl, err = l.ShortURL()
+		isExist, err = s.IsExist(sUrl)
 
-		if e != nil {
-			return "", err.WrapError("can't save link", e)
+		if err != nil {
+			return "", e.WrapError("can't save link", err)
 		}
 	}
 	s.db[sUrl] = *l

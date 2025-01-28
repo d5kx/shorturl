@@ -6,7 +6,7 @@ import (
 
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 	"github.com/d5kx/shorturl/internal/app/storage"
-	"github.com/d5kx/shorturl/internal/util/err"
+	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Processor struct {
@@ -22,15 +22,20 @@ func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost && req.Header.Get("Content-Type") == "text/plain" && req.ContentLength > 0 {
 
 		b := make([]byte, req.ContentLength)
-		req.Body.Read(b)
+		_, err := req.Body.Read(b)
+		if err != nil {
+			e.WrapError("can't process POST request", err)
+			return
+		}
 
 		var sb strings.Builder
 		sb.Write(b)
 		var l = storage.Link{URL: sb.String()}
 
-		sUrl, e := p.stor.Save(&l)
-		if e != nil {
-			err.WrapError("can't process POST request", e)
+		var sUrl string
+		sUrl, err = p.stor.Save(&l)
+		if err != nil {
+			e.WrapError("can't process POST request", err)
 			return
 		}
 
@@ -42,22 +47,28 @@ func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 
 	}
 
-	if req.Method == http.MethodGet {
+	if req.Method == http.MethodGet /*&& req.Header.Get("Content-Type") == "text/plain"*/ {
+		slice := strings.Split(strings.TrimLeft(req.URL.Path, "/"), "/")
+		if len(slice) == 0 {
+			return
+		}
 
-		l, e := p.stor.Get("")
+		l, err := p.stor.Get(slice[0])
 
-		if e != nil {
-			err.WrapError("can't process GET request", e)
+		if err != nil {
+			e.WrapError("can't process GET request", err)
 			return
 		}
 		if l == nil {
-			//return
+			return
 		}
 
-		//res.Header().Set("Location", l.URL)
-		//res.WriteHeader(http.StatusTemporaryRedirect)
+		res.Header().Set("Location", l.URL)
+		res.WriteHeader(http.StatusTemporaryRedirect)
 		//res.Write([]byte((*l).URL))
-		res.Write([]byte(req.URL.Scheme))
+		//slice := strings.Split(strings.TrimLeft(req.URL.Path, "/"), "/")
+		//res.Write([]byte(strings.TrimLeft(req.URL.Path, "/")))
+		//res.Write([]byte(slice[0]))
 
 		return
 	}

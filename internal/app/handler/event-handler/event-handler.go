@@ -2,7 +2,7 @@ package event_handler
 
 import (
 	"github.com/d5kx/shorturl/internal/app/fetcher"
-	"github.com/d5kx/shorturl/internal/util/err"
+	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Handler struct {
@@ -10,9 +10,9 @@ type Handler struct {
 }
 
 func (h *Handler) Run() error {
-	e := h.fetcher.Fetch()
-	if e != nil {
-		return err.WrapError("can't start fetcher", e)
+	err := h.fetcher.Fetch()
+	if err != nil {
+		return e.WrapError("can't start fetcher", err)
 	}
 
 	return nil

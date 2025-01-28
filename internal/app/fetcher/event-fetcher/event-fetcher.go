@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/d5kx/shorturl/internal/app/processor"
-	"github.com/d5kx/shorturl/internal/util/err"
+	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Fetcher struct {
@@ -29,10 +29,10 @@ func New(processor processor.Processor) Fetcher {
 
 func (f Fetcher) Fetch() error {
 
-	e := http.ListenAndServe(ServerAdress, f.mux)
+	err := http.ListenAndServe(ServerAdress, f.mux)
 
-	if e != nil {
-		return err.WrapError("can't start http server", e)
+	if err != nil {
+		return e.WrapError("can't start http server", err)
 	}
 	fmt.Println("Fetch() - OK")
 	return nil

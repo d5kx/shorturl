@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/d5kx/shorturl/internal/util/err"
+	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 const (
@@ -34,16 +34,16 @@ type Link struct {
 
 func (l Link) ShortURL() (string, error) {
 	var b strings.Builder
-	var e error
+	var err error
 
-	rand.Seed(time.Now().UnixNano())
+	rand.NewSource(time.Now().UnixNano())
 	ln := len(symbolDic)
 
 	for i := 0; i < shorURLLength; i++ {
 
-		e = b.WriteByte(symbolDic[rand.Intn(ln)])
-		if e != nil {
-			return "", err.WrapError("can't generate short link", e)
+		err = b.WriteByte(symbolDic[rand.Intn(ln)])
+		if err != nil {
+			return "", e.WrapError("can't generate short link", err)
 		}
 	}
 
