@@ -1,5 +1,9 @@
 package processor
 
+import (
+	"net/http"
+)
+
 type Processor interface {
-	Process() error
+	Process(res http.ResponseWriter, req *http.Request)
 }

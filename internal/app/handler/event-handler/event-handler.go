@@ -1,31 +1,23 @@
-package eventhandler
+package event_handler
 
 import (
 	"github.com/d5kx/shorturl/internal/app/fetcher"
-	"github.com/d5kx/shorturl/internal/app/processor"
+	"github.com/d5kx/shorturl/internal/util/err"
 )
 
 type Handler struct {
-	fetcher   fetcher.Fetcher
-	processor processor.Processor
+	fetcher fetcher.Fetcher
 }
 
 func (h *Handler) Run() error {
-	err := h.fetcher.Fetch()
-	if err != nil {
-		return err
+	e := h.fetcher.Fetch()
+	if e != nil {
+		return err.WrapError("can't start fetcher", e)
 	}
 
-	err = h.processor.Process()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
-func New(fetcher fetcher.Fetcher, processor processor.Processor) Handler {
-	return Handler{
-		fetcher:   fetcher,
-		processor: processor,
-	}
+func New(fetcher fetcher.Fetcher) Handler {
+	return Handler{fetcher: fetcher}
 }

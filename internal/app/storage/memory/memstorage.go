@@ -9,7 +9,7 @@ type Storage struct {
 	db map[string]storage.Link
 }
 
-func (s *Storage) GetDB() map[string]storage.Link {
+func (s Storage) GetDB() map[string]storage.Link {
 	return s.db
 }
 
@@ -17,7 +17,7 @@ func New() Storage {
 	return Storage{db: make(map[string]storage.Link)}
 }
 
-func (s *Storage) Save(l *storage.Link) error {
+func (s Storage) Save(l *storage.Link) (string, error) {
 
 	var sUrl string
 	var e error
@@ -28,28 +28,28 @@ func (s *Storage) Save(l *storage.Link) error {
 		isExist, e = s.IsExist(sUrl)
 
 		if e != nil {
-			return err.WrapError("can't save link", e)
+			return "", err.WrapError("can't save link", e)
 		}
 	}
 	s.db[sUrl] = *l
 
-	return nil
+	return sUrl, nil
 
 }
-func (s *Storage) Get(shortURL string) (*storage.Link, error) {
+func (s Storage) Get(shortURL string) (*storage.Link, error) {
 	value, ok := s.db[shortURL]
 
-	if ok {
-		return &value, nil
+	if !ok {
+		return nil, nil
 	}
-	return nil, nil
+	return &value, nil
 
 }
-func (s *Storage) IsExist(shortURL string) (bool, error) {
+func (s Storage) IsExist(shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil
 }
-func (s *Storage) Remove(shortURL string) error {
+func (s Storage) Remove(shortURL string) error {
 	delete(s.db, shortURL)
 	return nil
 

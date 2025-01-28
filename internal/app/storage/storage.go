@@ -9,19 +9,20 @@ import (
 )
 
 const (
-	shorURLLength = 8
-	maxURLLength  = 256
+	shorURLLength = 6
 )
 
 var symbolDic = []byte{
-	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
-	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
-	'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
-	'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+	'A', 'b', 'C', 'd', 'E', 'f', 'G', 'h', 'I', 'j',
+	'a', 'B', 'c', 'D', 'e', 'F', 'g', 'H', 'i', 'J',
+	'K', 'l', 'M', 'n', 'O', 'p', 'Q', 'r', 'S', 't',
+	'k', 'L', 'm', 'N', 'o', 'P', 'q', 'R', 's', 'T',
+	'u', 'V', 'w', 'X', 'y', 'Z', 'U', 'v', 'W', 'x',
+	'Y', 'z',
 }
 
 type Storage interface {
-	Save(*Link) error
+	Save(*Link) (string, error)
 	Get(shortURL string) (*Link, error)
 	IsExist(shortURL string) (bool, error)
 	Remove(shortURL string) error
