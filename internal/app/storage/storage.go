@@ -34,14 +34,13 @@ type Link struct {
 
 func (l Link) ShortURL() (string, error) {
 	var b strings.Builder
-	var err error
 
 	rand.NewSource(time.Now().UnixNano())
 	ln := len(symbolDic)
 
 	for i := 0; i < shorURLLength; i++ {
 
-		err = b.WriteByte(symbolDic[rand.Intn(ln)])
+		err := b.WriteByte(symbolDic[rand.Intn(ln)])
 		if err != nil {
 			return "", e.WrapError("can't generate short link", err)
 		}

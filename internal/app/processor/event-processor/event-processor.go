@@ -1,12 +1,12 @@
 package event_processor
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 	"github.com/d5kx/shorturl/internal/app/storage"
-	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Processor struct {
@@ -19,12 +19,13 @@ func New(storage storage.Storage) Processor {
 
 func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 
-	if req.Method == http.MethodPost && req.Header.Get("Content-Type") == "text/plain" && req.ContentLength > 0 {
+	if req.Method == http.MethodPost && req.Header.Get("Content-Type") == "text/plain" {
 
 		b := make([]byte, req.ContentLength)
-		_, err := req.Body.Read(b)
-		if err != nil {
-			e.WrapError("can't process POST request", err)
+		n, _ := req.Body.Read(b)
+		if n == 0 {
+			log.Println("can't process POST request (no link in request)/")
+			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -32,48 +33,36 @@ func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 		sb.Write(b)
 		var l = storage.Link{URL: sb.String()}
 
-		var sUrl string
-		sUrl, err = p.stor.Save(&l)
+		sUrl, err := p.stor.Save(&l)
 		if err != nil {
-			e.WrapError("can't process POST request", err)
+			log.Println("can't process POST request (short link is not saved in the database)")
+			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-
-		res.Write([]byte("http://" + event_fetcher.ServerAdress + "/" + sUrl + "#" + l.URL))
+		res.Write([]byte("http://" + event_fetcher.ServerAdress + "/" + sUrl))
 		return
-
 	}
 
-	if req.Method == http.MethodGet /*&& req.Header.Get("Content-Type") == "text/plain"*/ {
-		slice := strings.Split(strings.TrimLeft(req.URL.Path, "/"), "/")
-		if len(slice) == 0 {
-			return
-		}
+	if req.Method == http.MethodGet && req.Header.Get("Content-Type") == "text/plain" {
 
-		l, err := p.stor.Get(slice[0])
+		l, err := p.stor.Get(strings.TrimPrefix(req.URL.Path, "/"))
 
-		if err != nil {
-			e.WrapError("can't process GET request", err)
-			return
-		}
-		if l == nil {
+		if err != nil || l == nil {
+
+			log.Println("can't process GET request (short link does not exist)")
+			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		res.Header().Set("Location", l.URL)
 		res.WriteHeader(http.StatusTemporaryRedirect)
-		//res.Write([]byte((*l).URL))
-		//slice := strings.Split(strings.TrimLeft(req.URL.Path, "/"), "/")
-		//res.Write([]byte(strings.TrimLeft(req.URL.Path, "/")))
-		//res.Write([]byte(slice[0]))
-
 		return
 	}
 
+	log.Println("can't process request (request type is not supported)")
 	res.WriteHeader(http.StatusBadRequest)
 	return
-
 }
