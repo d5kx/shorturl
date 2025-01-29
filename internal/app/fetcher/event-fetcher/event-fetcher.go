@@ -13,7 +13,7 @@ type Fetcher struct {
 }
 
 const (
-	ServerAdress = "localhost:8080"
+	ServerAddress = "localhost:8080"
 )
 
 func New(processor processor.Processor) Fetcher {
@@ -28,7 +28,7 @@ func New(processor processor.Processor) Fetcher {
 
 func (f Fetcher) Fetch() error {
 
-	err := http.ListenAndServe(ServerAdress, f.mux)
+	err := http.ListenAndServe(ServerAddress, f.mux)
 
 	if err != nil {
 		return e.WrapError("can't start http server", err)
