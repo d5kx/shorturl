@@ -1,7 +1,6 @@
 package event_fetcher
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/d5kx/shorturl/internal/app/processor"

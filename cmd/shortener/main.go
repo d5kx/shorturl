@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 	"github.com/d5kx/shorturl/internal/app/handler/event-handler"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
-	"github.com/d5kx/shorturl/internal/app/storage"
 	"github.com/d5kx/shorturl/internal/app/storage/memory"
 )
 
@@ -28,7 +26,5 @@ func main() {
 
 	if err := handler.Run(); err != nil {
 		log.Fatal("can't run service", err)
-
 	}
-
 }

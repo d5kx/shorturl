@@ -4,8 +4,6 @@ import (
 	"math/rand"
 	"strings"
 	"time"
-
-	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 const (
@@ -39,11 +37,7 @@ func (l Link) ShortURL() (string, error) {
 	ln := len(symbolDic)
 
 	for i := 0; i < shorURLLength; i++ {
-
-		err := b.WriteByte(symbolDic[rand.Intn(ln)])
-		if err != nil {
-			return "", e.WrapError("can't generate short link", err)
-		}
+		b.WriteByte(symbolDic[rand.Intn(ln)])
 	}
 
 	return b.String(), nil
