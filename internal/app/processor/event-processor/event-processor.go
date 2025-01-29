@@ -22,13 +22,14 @@ func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost && req.Header.Get("Content-Type") == "text/plain" {
 
 		b := make([]byte, req.ContentLength)
-		n, _ := req.Body.Read(b)
+		req.Body.Read(b)
+		/*n, _ := req.Body.Read(b)
 		if n == 0 {
 			log.Println("can't process POST request (no link in request)/")
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
+		*/
 		var sb strings.Builder
 		sb.Write(b)
 		var l = storage.Link{URL: sb.String()}
