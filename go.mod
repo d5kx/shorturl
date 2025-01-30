@@ -1,3 +1,3 @@
 module github.com/d5kx/shorturl
 
-go 1.23.5
+go 1.22

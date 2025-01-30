@@ -1,10 +1,11 @@
-package event_processor
+package eventprocessor
 
 import (
-	event_fetcher "github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 
 	"github.com/d5kx/shorturl/internal/app/storage"
 )
@@ -31,7 +32,6 @@ func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 
 	log.Println("can't process request (request type is not supported)")
 	res.WriteHeader(http.StatusBadRequest)
-	return
 }
 
 func (p Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Request) {
@@ -46,7 +46,6 @@ func (p Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Reques
 
 	res.Header().Set("Location", l.URL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
-	return
 }
 
 func (p Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Request) {
@@ -62,7 +61,7 @@ func (p Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Reque
 	sb.Write(b)
 	var l = storage.Link{URL: sb.String()}
 
-	sUrl, err := p.db.Save(&l)
+	sURL, err := p.db.Save(&l)
 	if err != nil {
 		log.Println("can't process POST request (short link is not saved in the database)")
 		res.WriteHeader(http.StatusBadRequest)
@@ -71,6 +70,5 @@ func (p Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Reque
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte("http://" + event_fetcher.ServerAddress + "/" + sUrl))
-	return
+	res.Write([]byte("http://" + eventfetcher.ServerAddress + "/" + sURL))
 }

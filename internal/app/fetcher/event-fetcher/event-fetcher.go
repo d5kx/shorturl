@@ -1,4 +1,4 @@
-package event_fetcher
+package eventfetcher
 
 import (
 	"net/http"

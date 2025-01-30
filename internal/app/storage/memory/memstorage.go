@@ -19,21 +19,21 @@ func New() Storage {
 
 func (s Storage) Save(l *storage.Link) (string, error) {
 
-	var sUrl string
+	var sURL string
 	var err error
 	isExist := true
 
 	for isExist {
-		sUrl, err = l.ShortURL()
-		isExist, err = s.IsExist(sUrl)
+		sURL = l.ShortURL()
+		isExist, err = s.IsExist(sURL)
 
 		if err != nil {
 			return "", e.WrapError("can't save link", err)
 		}
 	}
-	s.db[sUrl] = *l
+	s.db[sURL] = *l
 
-	return sUrl, nil
+	return sURL, nil
 
 }
 func (s Storage) Get(shortURL string) (*storage.Link, error) {

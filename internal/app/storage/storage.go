@@ -30,7 +30,7 @@ type Link struct {
 	URL string
 }
 
-func (l Link) ShortURL() (string, error) {
+func (l Link) ShortURL() string {
 	var b strings.Builder
 
 	rand.NewSource(time.Now().UnixNano())
@@ -40,5 +40,5 @@ func (l Link) ShortURL() (string, error) {
 		b.WriteByte(symbolDic[rand.Intn(ln)])
 	}
 
-	return b.String(), nil
+	return b.String()
 }
