@@ -1,12 +1,12 @@
 package eventserver
 
 import (
-	"github.com/d5kx/shorturl/internal/app/fetcher"
+	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Server struct {
-	fetcher fetcher.Fetcher
+	fetcher *eventfetcher.Fetcher
 }
 
 func (s *Server) Run() error {
@@ -18,6 +18,6 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func New(fetcher fetcher.Fetcher) Server {
+func New(fetcher *eventfetcher.Fetcher) Server {
 	return Server{fetcher: fetcher}
 }

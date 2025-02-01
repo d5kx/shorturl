@@ -1,23 +1,23 @@
 package memstorage
 
 import (
-	"github.com/d5kx/shorturl/internal/app/storage"
+	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Storage struct {
-	db map[string]storage.Link
+	db map[string]link.Link
 }
 
-func (s Storage) GetDB() map[string]storage.Link {
+func (s Storage) GetDB() map[string]link.Link {
 	return s.db
 }
 
 func New() Storage {
-	return Storage{db: make(map[string]storage.Link)}
+	return Storage{db: make(map[string]link.Link)}
 }
 
-func (s Storage) Save(l *storage.Link) (string, error) {
+func (s Storage) Save(l *link.Link) (string, error) {
 
 	var sURL string
 	var err error
@@ -36,7 +36,7 @@ func (s Storage) Save(l *storage.Link) (string, error) {
 	return sURL, nil
 
 }
-func (s Storage) Get(shortURL string) (*storage.Link, error) {
+func (s Storage) Get(shortURL string) (*link.Link, error) {
 	value, ok := s.db[shortURL]
 
 	if !ok {
