@@ -1,4 +1,4 @@
-package event_server
+package eventserver
 
 import (
 	"github.com/d5kx/shorturl/internal/app/fetcher"
