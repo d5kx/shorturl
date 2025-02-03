@@ -21,8 +21,7 @@ func (p *Processor) AddAddress(address string) {
 	p.address = address
 }
 func (p *Processor) Process(res http.ResponseWriter, req *http.Request) {
-
-	if req.Method == http.MethodPost && strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
+	if req.Method == http.MethodPost {
 		p.methodPostHandleFunc(res, req)
 		return
 	}
@@ -51,11 +50,17 @@ func (p *Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Reque
 }
 
 func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Request) {
+	if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
+		log.Println("can't process POST request (wrong Content-Type)")
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	b := make([]byte, req.ContentLength)
 	n, _ := req.Body.Read(b)
 	defer req.Body.Close()
 	if n == 0 {
-		log.Println("can't process POST request (no link in request)/")
+		log.Println("can't process POST request (no link in request)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}

@@ -19,8 +19,10 @@ func (s Storage) Save(l *link.Link) (string, error) {
 }
 
 func (s Storage) Get(shortURL string) (*link.Link, error) {
-
-	return &(link.Link{URL: "http://ya.ru"}), nil
+	if shortURL == "AbCdEf" {
+		return &(link.Link{URL: "http://ya.ru"}), nil
+	}
+	return nil, nil
 }
 
 func (s Storage) IsExist(shortURL string) (bool, error) {
