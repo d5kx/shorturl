@@ -53,6 +53,7 @@ func (p *Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Reque
 func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Request) {
 	b := make([]byte, req.ContentLength)
 	n, _ := req.Body.Read(b)
+	defer req.Body.Close()
 	if n == 0 {
 		log.Println("can't process POST request (no link in request)/")
 		res.WriteHeader(http.StatusBadRequest)
