@@ -28,7 +28,7 @@ func (f *Fetcher) Fetch() error {
 	if err != nil {
 		return e.WrapError("can't start http server", err)
 	}
-
+	
 	return nil
 }
 
