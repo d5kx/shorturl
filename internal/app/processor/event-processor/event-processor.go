@@ -1,6 +1,7 @@
 package eventprocessor
 
 import (
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -56,10 +57,9 @@ func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	b := make([]byte, req.ContentLength)
-	n, _ := req.Body.Read(b)
+	b, _ := io.ReadAll(req.Body)
 	defer req.Body.Close()
-	if n == 0 {
+	if len(b) == 0 {
 		log.Println("can't process POST request (no link in request)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
