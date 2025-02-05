@@ -16,7 +16,7 @@ import (
 // go tool cover -html=cover.txt
 func Test_Process(t *testing.T) {
 	p := New(mockstorage.New())
-	p.AddAddress("localhost:8080")
+	p.SetAddress("localhost:8080")
 	testCases := []struct {
 		name         string
 		path         string
@@ -66,7 +66,7 @@ func Test_Process(t *testing.T) {
 }
 func Test_methodPostHandleFunc(t *testing.T) {
 	p := New(mockstorage.New())
-	p.AddAddress("localhost:8080")
+	p.SetAddress("localhost:8080")
 
 	testCases := []struct {
 		name                string
@@ -121,7 +121,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 			r := httptest.NewRequest(tc.method, "/", body)
 			r.Header.Set("Content-Type", tc.contentType)
 			w := httptest.NewRecorder()
-			p.methodPostHandleFunc(w, r)
+			p.Post(w, r)
 
 			b := make([]byte, w.Body.Len())
 			w.Body.Read(b)
@@ -137,7 +137,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 
 func Test_methodGetHandleFunc(t *testing.T) {
 	p := New(mockstorage.New())
-	p.AddAddress("localhost:8080")
+	p.SetAddress("localhost:8080")
 	testCases := []struct {
 		name             string
 		path             string
@@ -182,7 +182,7 @@ func Test_methodGetHandleFunc(t *testing.T) {
 			r := httptest.NewRequest(tc.method, tc.path, body)
 			r.Header.Set("Content-Type", tc.contentType)
 			w := httptest.NewRecorder()
-			p.Process(w, r)
+			p.Get(w, r)
 
 			assert.Equal(t, tc.expectedCode, w.Code, "Код ответа не совпадает с ожидаемым")
 			assert.Equal(t, tc.expectedLocation, w.Header().Get("Location"), "Адрес переадресации не совпадает с ожидаемым")

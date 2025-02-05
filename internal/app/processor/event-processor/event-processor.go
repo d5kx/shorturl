@@ -18,17 +18,18 @@ type Processor struct {
 func New(storage storage.Storage) Processor {
 	return Processor{db: storage}
 }
-func (p *Processor) AddAddress(address string) {
+func (p *Processor) SetAddress(address string) {
 	p.address = address
 }
+
 func (p *Processor) Process(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost {
-		p.methodPostHandleFunc(res, req)
+		p.Post(res, req)
 		return
 	}
 
 	if req.Method == http.MethodGet {
-		p.methodGetHandleFunc(res, req)
+		p.Get(res, req)
 		return
 	}
 
@@ -36,12 +37,12 @@ func (p *Processor) Process(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusBadRequest)
 }
 
-func (p *Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Request) {
+func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
 	l, err := p.db.Get(strings.TrimPrefix(req.URL.Path, "/"))
 
 	if err != nil || l == nil {
 
-		log.Println("can't process GET request (short link does not exist)")
+		log.Println("can't process GET request (short link does not exist in the database)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -50,7 +51,7 @@ func (p *Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Reque
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Request) {
+func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
 		log.Println("can't process POST request (wrong Content-Type)")
 		res.WriteHeader(http.StatusBadRequest)
@@ -60,7 +61,7 @@ func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Requ
 	b, _ := io.ReadAll(req.Body)
 	defer req.Body.Close()
 	if len(b) == 0 {
-		log.Println("can't process POST request (no link in request)")
+		log.Println("can't process POST request (no link in body request)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -79,4 +80,8 @@ func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Requ
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte("http://" + p.address + "/" + sURL))
+}
+
+func (p *Processor) BadRequest(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusBadRequest)
 }

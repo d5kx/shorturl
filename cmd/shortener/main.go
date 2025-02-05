@@ -16,8 +16,14 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	p := eventprocessor.New(memstorage.New())
+	p.SetAddress("localhost:8080")
+
 	f := eventfetcher.New("localhost:8080")
-	f.AddHandler(`/`, &p)
+	f.Router.Post(`/`, p.Post)
+	f.Router.Get(`/{id}`, p.Get)
+	f.Router.NotFound(p.BadRequest)
+	f.Router.MethodNotAllowed(p.BadRequest)
+	//f.AddHandler(`/`, &p)
 
 	server := eventserver.New(&f)
 
