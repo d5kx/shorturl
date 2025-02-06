@@ -18,23 +18,9 @@ type Processor struct {
 func New(storage storage.Storage) Processor {
 	return Processor{db: storage}
 }
+
 func (p *Processor) SetAddress(address string) {
 	p.address = address
-}
-
-func (p *Processor) Process(res http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodPost {
-		p.Post(res, req)
-		return
-	}
-
-	if req.Method == http.MethodGet {
-		p.Get(res, req)
-		return
-	}
-
-	log.Println("can't process request (request type is not supported)")
-	res.WriteHeader(http.StatusBadRequest)
 }
 
 func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {

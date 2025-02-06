@@ -14,56 +14,6 @@ import (
 
 // go test -v -count 1 -coverprofile=cover.txt
 // go tool cover -html=cover.txt
-func Test_Process(t *testing.T) {
-	p := New(mockstorage.New())
-	p.SetAddress("localhost:8080")
-	testCases := []struct {
-		name         string
-		path         string
-		method       string
-		contentType  string
-		body         string
-		expectedCode int
-	}{
-		{
-			name:         "CONNECT request",
-			path:         "/",
-			method:       http.MethodConnect,
-			contentType:  "text/plain",
-			body:         "http://ya.ru",
-			expectedCode: http.StatusBadRequest,
-		},
-		{
-			name:         "POST request",
-			path:         "/",
-			method:       http.MethodPost,
-			contentType:  "text/plain",
-			body:         "http://ya.ru",
-			expectedCode: http.StatusCreated,
-		},
-		{
-			name:         "GET request",
-			path:         "/AbCdEf",
-			method:       http.MethodGet,
-			contentType:  "text/plain",
-			body:         "",
-			expectedCode: http.StatusTemporaryRedirect,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-
-			body := bytes.NewBuffer([]byte(tc.body))
-			r := httptest.NewRequest(tc.method, tc.path, body)
-			r.Header.Set("Content-Type", tc.contentType)
-			w := httptest.NewRecorder()
-			p.Process(w, r)
-
-			assert.Equal(t, tc.expectedCode, w.Code, "Код ответа не совпадает с ожидаемым")
-		})
-	}
-
-}
 func Test_methodPostHandleFunc(t *testing.T) {
 	p := New(mockstorage.New())
 	p.SetAddress("localhost:8080")
