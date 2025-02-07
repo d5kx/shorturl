@@ -6,21 +6,17 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/d5kx/shorturl/cmd/shortener/conf"
 	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/app/storage"
 )
 
 type Processor struct {
-	db      storage.Storage
-	address string
+	db storage.Storage
 }
 
 func New(storage storage.Storage) Processor {
 	return Processor{db: storage}
-}
-
-func (p *Processor) SetAddress(address string) {
-	p.address = address
 }
 
 func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
@@ -65,7 +61,12 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte("http://" + p.address + "/" + sURL))
+	_, err = res.Write([]byte(strings.Join([]string{conf.GetSchemeResUrl(), "://", conf.GetResUrlAdr(), "/", sURL}, "")))
+	if err != nil {
+		log.Println("can't process POST request (can't write response body)")
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }
 
 func (p *Processor) BadRequest(res http.ResponseWriter, req *http.Request) {

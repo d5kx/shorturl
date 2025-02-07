@@ -18,7 +18,6 @@ func (s Storage) Save(l *link.Link) (string, error) {
 		return "", errors.New("db_error")
 	}
 	return "AbCdEf", nil
-
 }
 
 func (s Storage) Get(shortURL string) (*link.Link, error) {

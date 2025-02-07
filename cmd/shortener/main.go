@@ -16,13 +16,13 @@ import (
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
 // D:\go_projects\shorturl\cmd\shortener>go vet -vettool=D:\go_projects\statictest-windows-amd64.exe ./..
 func init() {
-	conf.Config.ParseFlags()
+	conf.ParseFlags()
 }
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	p := eventprocessor.New(memstorage.New())
-	f := eventfetcher.New(conf.Config.GetServAdr(), &p)
+	f := eventfetcher.New(&p)
 
 	server := eventserver.New(&f)
 	if err := server.Run(); err != nil {

@@ -5,24 +5,29 @@ import (
 )
 
 type config struct {
-	serverAddress      string
-	responseUrlAddress string
+	serverAddress        string
+	responseUrlAddress   string
+	schemeForResponseUrl string
 }
 
-var Config config
+var cnf config
 
-func (c *config) ParseFlags() {
-
-	flag.StringVar(&c.serverAddress, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&c.responseUrlAddress, "b", "localhost:8080", "address and port to response URL")
+func ParseFlags() {
+	cnf.schemeForResponseUrl = "http"
+	flag.StringVar(&cnf.serverAddress, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&cnf.responseUrlAddress, "b", "localhost:8080", "address and port to response URL")
 
 	flag.Parse()
 }
 
-func (c *config) GetServAdr() string {
-	return c.serverAddress
+func GetServAdr() string {
+	return cnf.serverAddress
 }
 
-func (c *config) GetResUrlAdr() string {
-	return c.responseUrlAddress
+func GetResUrlAdr() string {
+	return cnf.responseUrlAddress
+}
+
+func GetSchemeResUrl() string {
+	return cnf.schemeForResponseUrl
 }

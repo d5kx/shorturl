@@ -11,14 +11,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/d5kx/shorturl/cmd/shortener/conf"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/storage/mock"
 )
 
 func TestRouter(t *testing.T) {
 	p := eventprocessor.New(mockstorage.New())
-	f := New("localhost:8080", &p)
-
+	f := New(&p)
+	conf.ParseFlags()
 	ts := httptest.NewServer(f.Router)
 	defer ts.Close()
 

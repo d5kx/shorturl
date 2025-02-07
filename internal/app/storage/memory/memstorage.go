@@ -18,7 +18,6 @@ func New() Storage {
 }
 
 func (s Storage) Save(l *link.Link) (string, error) {
-
 	var sURL string
 	var err error
 	isExist := true
@@ -34,8 +33,8 @@ func (s Storage) Save(l *link.Link) (string, error) {
 	s.db[sURL] = *l
 
 	return sURL, nil
-
 }
+
 func (s Storage) Get(shortURL string) (*link.Link, error) {
 	value, ok := s.db[shortURL]
 
@@ -43,14 +42,14 @@ func (s Storage) Get(shortURL string) (*link.Link, error) {
 		return nil, nil
 	}
 	return &value, nil
-
 }
+
 func (s Storage) IsExist(shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil
 }
+
 func (s Storage) Remove(shortURL string) error {
 	delete(s.db, shortURL)
 	return nil
-
 }
