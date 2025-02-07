@@ -3,36 +3,36 @@ package eventfetcher
 import (
 	"net/http"
 
-	"github.com/d5kx/shorturl/internal/app/processor"
+	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Fetcher struct {
-	mux  *http.ServeMux
-	proc processor.Processor
+	mux     *http.ServeMux
+	address string
 }
 
-const (
-	ServerAddress = "localhost:8080"
-)
-
-func New(processor processor.Processor) Fetcher {
+func New(address string) Fetcher {
 	var f Fetcher
 
-	f.proc = processor
 	f.mux = http.NewServeMux()
-	f.mux.HandleFunc(`/`, f.proc.Process)
+	f.address = address
 
 	return f
 }
 
-func (f Fetcher) Fetch() error {
+func (f *Fetcher) Fetch() error {
 
-	err := http.ListenAndServe(ServerAddress, f.mux)
+	err := http.ListenAndServe(f.address, f.mux)
 
 	if err != nil {
 		return e.WrapError("can't start http server", err)
 	}
 
 	return nil
+}
+
+func (f *Fetcher) AddHandler(pattern string, handler *eventprocessor.Processor) {
+	f.mux.HandleFunc(pattern, handler.Process)
+	handler.AddAddress(f.address)
 }

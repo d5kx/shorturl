@@ -16,17 +16,17 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	//var l = storage.Link{URL: "https://habr.com/ru/articles/457728/"}
-	s := memstorage.New()
 	//s.Save(&l)
-
 	//fmt.Println(s.GetDB())
 
-	p := eventprocessor.New(s)
-	f := eventfetcher.New(p)
+	p := eventprocessor.New(memstorage.New())
 
-	handler := eventserver.New(f)
+	f := eventfetcher.New("localhost:8080")
+	f.AddHandler(`/`, &p)
 
-	if err := handler.Run(); err != nil {
+	server := eventserver.New(&f)
+
+	if err := server.Run(); err != nil {
 		log.Fatal("can't run service", err)
 	}
 }

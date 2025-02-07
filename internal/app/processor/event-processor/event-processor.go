@@ -5,22 +5,23 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
-
+	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/app/storage"
 )
 
 type Processor struct {
-	db storage.Storage
+	db      storage.Storage
+	address string
 }
 
 func New(storage storage.Storage) Processor {
 	return Processor{db: storage}
 }
-
-func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
-
-	if req.Method == http.MethodPost && strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
+func (p *Processor) AddAddress(address string) {
+	p.address = address
+}
+func (p *Processor) Process(res http.ResponseWriter, req *http.Request) {
+	if req.Method == http.MethodPost {
 		p.methodPostHandleFunc(res, req)
 		return
 	}
@@ -34,7 +35,7 @@ func (p Processor) Process(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusBadRequest)
 }
 
-func (p Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Request) {
+func (p *Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Request) {
 	l, err := p.db.Get(strings.TrimPrefix(req.URL.Path, "/"))
 
 	if err != nil || l == nil {
@@ -48,18 +49,25 @@ func (p Processor) methodGetHandleFunc(res http.ResponseWriter, req *http.Reques
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (p Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Request) {
+func (p *Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Request) {
+	if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
+		log.Println("can't process POST request (wrong Content-Type)")
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	b := make([]byte, req.ContentLength)
 	n, _ := req.Body.Read(b)
+	defer req.Body.Close()
 	if n == 0 {
-		log.Println("can't process POST request (no link in request)/")
+		log.Println("can't process POST request (no link in request)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	var sb strings.Builder
 	sb.Write(b)
-	var l = storage.Link{URL: sb.String()}
+	var l = link.Link{URL: sb.String()}
 
 	sURL, err := p.db.Save(&l)
 	if err != nil {
@@ -70,5 +78,5 @@ func (p Processor) methodPostHandleFunc(res http.ResponseWriter, req *http.Reque
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte("http://" + eventfetcher.ServerAddress + "/" + sURL))
+	res.Write([]byte("http://" + p.address + "/" + sURL))
 }
