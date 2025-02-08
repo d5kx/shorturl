@@ -14,6 +14,8 @@ import (
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
 // curl -v -X GET -H "Content-Type:text/plain" "http://localhost:8080/GlTBlr"
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
+// shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\processor\event-processor\event-processor_test.go
+// shortenertest-windows-amd64 -test.v -test.run=^TestIteration4$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe -server-port=$(random unused-port)
 // D:\go_projects\shorturl\cmd\shortener>go vet -vettool=D:\go_projects\statictest-windows-amd64.exe ./..
 func init() {
 	conf.ParseFlags()
