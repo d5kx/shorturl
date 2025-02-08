@@ -6,16 +6,16 @@ import (
 
 type config struct {
 	serverAddress        string
-	responseUrlAddress   string
-	schemeForResponseUrl string
+	responseURLAddress   string
+	schemeForResponseURL string
 }
 
 var cnf config
 
 func ParseFlags() {
-	cnf.schemeForResponseUrl = "http"
+	cnf.schemeForResponseURL = "http"
 	flag.StringVar(&cnf.serverAddress, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&cnf.responseUrlAddress, "b", "localhost:8080", "address and port to response URL")
+	flag.StringVar(&cnf.responseURLAddress, "b", "localhost:8080", "address and port to response URL")
 
 	flag.Parse()
 }
@@ -24,10 +24,10 @@ func GetServAdr() string {
 	return cnf.serverAddress
 }
 
-func GetResUrlAdr() string {
-	return cnf.responseUrlAddress
+func GetResURLAdr() string {
+	return cnf.responseURLAddress
 }
 
-func GetSchemeResUrl() string {
-	return cnf.schemeForResponseUrl
+func GetSchemeResURL() string {
+	return cnf.schemeForResponseURL
 }

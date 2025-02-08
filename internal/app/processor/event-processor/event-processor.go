@@ -61,7 +61,7 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte(strings.Join([]string{conf.GetSchemeResUrl(), "://", conf.GetResUrlAdr(), "/", sURL}, "")))
+	_, err = res.Write([]byte(strings.Join([]string{ /*conf.GetSchemeResURL(), "://",*/ conf.GetResURLAdr(), "/", sURL}, "")))
 	if err != nil {
 		log.Println("can't process POST request (can't write response body)")
 		res.WriteHeader(http.StatusBadRequest)
