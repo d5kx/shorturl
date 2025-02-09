@@ -14,7 +14,7 @@ func New() Storage {
 }
 
 func (s Storage) Save(l *link.Link) (string, error) {
-	if l.originalURL == "db_error" {
+	if l.OriginalURL == "db_error" {
 		return "", errors.New("db_error")
 	}
 	return "AbCdEf", nil
@@ -22,7 +22,7 @@ func (s Storage) Save(l *link.Link) (string, error) {
 
 func (s Storage) Get(shortURL string) (*link.Link, error) {
 	if shortURL == "AbCdEf" {
-		return &(link.Link{originalURL: "http://ya.ru"}), nil
+		return &(link.Link{OriginalURL: "http://ya.ru"}), nil
 	}
 	return nil, nil
 }
