@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// go test -v -count 1 -coverprofile=cover.txt
+// go test -v -count 1 -coverprofile="cover.txt"
 // go tool cover -html=cover.txt
 func Test_methodPostHandleFunc(t *testing.T) {
 	p := New(mockstorage.New())
