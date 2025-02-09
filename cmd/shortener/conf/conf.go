@@ -2,26 +2,33 @@ package conf
 
 import (
 	"flag"
+	"log"
+	"net/url"
 )
 
-type config struct {
-	serverAddress      string
-	responseURLAddress string
+type flags struct {
+	flagServerAddress      string
+	flagResponseURLAddress string
 }
 
-var cnf config
+var cnf flags
 
 func ParseFlags() {
-	flag.StringVar(&cnf.serverAddress, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&cnf.responseURLAddress, "b", "http://localhost:8080", "address and port to response originalURL")
-
+	flag.StringVar(&cnf.flagServerAddress, "a", "localhost:8080", "address and port to start the HTTP server")
+	flag.StringVar(&cnf.flagResponseURLAddress, "b", "http://localhost:8080", "base address of the resulting shortened URL")
 	flag.Parse()
+
+	_, err := url.Parse(cnf.flagResponseURLAddress)
+	if err != nil {
+		log.Println("can't parse the base address of the resulting shortened URL (" + cnf.flagResponseURLAddress + "), set http://localhost:8080")
+		cnf.flagResponseURLAddress = "http://localhost:8080"
+	}
 }
 
 func GetServAdr() string {
-	return cnf.serverAddress
+	return cnf.flagServerAddress
 }
 
 func GetResURLAdr() string {
-	return cnf.responseURLAddress
+	return cnf.flagResponseURLAddress
 }
