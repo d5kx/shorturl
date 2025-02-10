@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/d5kx/shorturl/cmd/shortener/conf"
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/storage/mock"
 	"github.com/stretchr/testify/assert"
 )
