@@ -2,22 +2,22 @@ package eventprocessor
 
 import (
 	"bytes"
+
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/d5kx/shorturl/cmd/shortener/conf"
 	"github.com/d5kx/shorturl/internal/app/storage/mock"
+	"github.com/stretchr/testify/assert"
 )
 
-// go test -v -count 1 -coverprofile=cover.txt
+// go test -v -count 1 -coverprofile="cover.txt"
 // go tool cover -html=cover.txt
 func Test_methodPostHandleFunc(t *testing.T) {
 	p := New(mockstorage.New())
-	p.SetAddress("localhost:8080")
-
+	conf.ParseFlags()
 	testCases := []struct {
 		name                string
 		method              string
@@ -87,7 +87,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 
 func Test_methodGetHandleFunc(t *testing.T) {
 	p := New(mockstorage.New())
-	p.SetAddress("localhost:8080")
+	//conf.ParseFlags()
 	testCases := []struct {
 		name             string
 		path             string

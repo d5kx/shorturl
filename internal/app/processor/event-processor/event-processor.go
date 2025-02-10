@@ -6,21 +6,17 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/d5kx/shorturl/cmd/shortener/conf"
 	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/app/storage"
 )
 
 type Processor struct {
-	db      storage.Storage
-	address string
+	db storage.Storage
 }
 
 func New(storage storage.Storage) Processor {
 	return Processor{db: storage}
-}
-
-func (p *Processor) SetAddress(address string) {
-	p.address = address
 }
 
 func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
@@ -33,7 +29,7 @@ func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res.Header().Set("Location", l.URL)
+	res.Header().Set("Location", l.OriginalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
@@ -54,7 +50,7 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 
 	var sb strings.Builder
 	sb.Write(b)
-	var l = link.Link{URL: sb.String()}
+	var l = link.Link{OriginalURL: sb.String()}
 
 	sURL, err := p.db.Save(&l)
 	if err != nil {
@@ -65,7 +61,12 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte("http://" + p.address + "/" + sURL))
+	_, err = res.Write([]byte(strings.Join([]string{conf.GetResURLAdr(), "/", sURL}, "")))
+	if err != nil {
+		log.Println("can't process POST request (can't write response body)")
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }
 
 func (p *Processor) BadRequest(res http.ResponseWriter, req *http.Request) {

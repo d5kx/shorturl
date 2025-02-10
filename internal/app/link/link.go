@@ -20,7 +20,7 @@ var symbolDictionary = []byte{
 }
 
 type Link struct {
-	URL string
+	OriginalURL string
 }
 
 func (l Link) ShortURL() string {
