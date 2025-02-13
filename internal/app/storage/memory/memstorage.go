@@ -3,6 +3,7 @@ package memstorage
 import (
 	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/util/e"
+	"time"
 )
 
 type Storage struct {
@@ -37,7 +38,8 @@ func (s Storage) Save(l *link.Link) (string, error) {
 
 func (s Storage) Get(shortURL string) (*link.Link, error) {
 	value, ok := s.db[shortURL]
-
+	//для тестирование, потом удалить
+	time.Sleep(8 * time.Millisecond)
 	if !ok {
 		return nil, nil
 	}

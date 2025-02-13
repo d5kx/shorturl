@@ -2,7 +2,9 @@ package logger
 
 import (
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -19,7 +21,7 @@ type (
 	}
 )
 
-var Log *zap.Logger = zap.NewNop()
+var Log *zap.Logger
 
 func Init(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
@@ -27,17 +29,34 @@ func Init(level string) error {
 		return err
 	}
 	// создаём новую конфигурацию логера
-	cfg := zap.NewProductionConfig()
+	cfg := zap.NewProductionEncoderConfig()
+	cfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	cfg.EncodeDuration = zapcore.StringDurationEncoder
+	cfg.MessageKey = ""
+	cfg.LevelKey = "L"
+	cfg.TimeKey = "T"
+	cfg.NameKey = "N"
+	cfg.CallerKey = "C"
+	cfg.FunctionKey = "F"
+	cfg.StacktraceKey = ""
+
+	//cfg := zap.NewProductionConfig()
 	// устанавливаем уровень
-	cfg.Level = lvl
-	cfg.Encoding = "console"
+	//cfg.Level = lvl
+	//cfg.Encoding = "json"
 	// создаём логер на основе конфигурации
-	zl, err := cfg.Build()
-	if err != nil {
-		return err
-	}
-	// устанавливаем синглтон
-	Log = zl
+	//zl, err := cfg.Build()
+	//if err != nil {
+	//	return err
+	//}
+
+	logger := zap.New(zapcore.NewCore(
+		zapcore.NewJSONEncoder(cfg),
+		zapcore.Lock(os.Stdout),
+		lvl,
+	))
+	defer logger.Sync()
+	Log = logger
 	return nil
 }
 func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
@@ -46,7 +65,6 @@ func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
 
 		responseData := responseData{status: 0, size: 0}
 		lw := logResponseWriter{ResponseWriter: w, responseData: &responseData}
-
 		h(&lw, r)
 
 		duration := time.Since(start)
@@ -55,7 +73,7 @@ func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
 			zap.String("method", r.Method),
 			zap.Int("status", responseData.status),
 			zap.Int("size", responseData.size),
-			zap.Float64("duration", duration.Seconds()),
+			zap.Duration("duration", duration),
 		)
 	}
 }
