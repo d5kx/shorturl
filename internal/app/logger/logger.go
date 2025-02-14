@@ -2,8 +2,9 @@ package logger
 
 import (
 	"net/http"
-	"os"
 	"time"
+
+	"github.com/d5kx/shorturl/internal/util/e"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -27,39 +28,29 @@ var Log *zap.Logger
 func Init(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
 	}
-	// создаём новую конфигурацию логера
-	cfg := zap.NewProductionEncoderConfig()
-	cfg.EncodeTime = zapcore.ISO8601TimeEncoder
-	cfg.EncodeDuration = zapcore.StringDurationEncoder
-	cfg.MessageKey = ""
-	cfg.LevelKey = "L"
-	cfg.TimeKey = "T"
-	cfg.NameKey = "N"
-	cfg.CallerKey = "C"
-	cfg.FunctionKey = "F"
-	cfg.StacktraceKey = ""
 
-	//cfg := zap.NewProductionConfig()
-	// устанавливаем уровень
-	//cfg.Level = lvl
-	//cfg.Encoding = "json"
-	// создаём логер на основе конфигурации
-	//zl, err := cfg.Build()
-	//if err != nil {
-	//	return err
-	//}
+	ecfg := zap.NewProductionEncoderConfig()
+	ecfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	ecfg.EncodeDuration = zapcore.StringDurationEncoder
 
-	logger := zap.New(zapcore.NewCore(
-		zapcore.NewJSONEncoder(cfg),
-		zapcore.Lock(os.Stdout),
-		lvl,
-	))
-	defer logger.Sync()
-	Log = logger
+	cfg := zap.NewProductionConfig()
+	cfg.Level = lvl
+	cfg.Encoding = "console" //json or console
+	cfg.DisableCaller = true
+	cfg.EncoderConfig = ecfg
+
+	zl, err := cfg.Build()
+	if err != nil {
+		return e.WrapError("can't create logger configuration", err)
+	}
+	defer zl.Sync()
+
+	Log = zl
 	return nil
 }
+
 func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -69,6 +60,7 @@ func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
 		h(&lw, r)
 
 		duration := time.Since(start)
+
 		Log.Info("got incoming HTTP request",
 			zap.String("uri", r.RequestURI),
 			zap.String("method", r.Method),

@@ -19,11 +19,9 @@ import (
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	conf.ParseFlags()
-
 }
 
 func main() {
-
 	p := eventprocessor.New(memstorage.New())
 	f := eventfetcher.New(&p)
 

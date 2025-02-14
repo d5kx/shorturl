@@ -10,6 +10,7 @@ import (
 type flags struct {
 	flagServerAddress      string
 	flagResponseURLAddress string
+	flagLoggerLevel        string
 }
 
 var cnf flags
@@ -17,6 +18,8 @@ var cnf flags
 func ParseFlags() {
 	flag.StringVar(&cnf.flagServerAddress, "a", "localhost:8080", "address and port to start the HTTP server")
 	flag.StringVar(&cnf.flagResponseURLAddress, "b", "http://localhost:8080", "base address of the resulting shortened URL")
+	flag.StringVar(&cnf.flagLoggerLevel, "l", "info", "logger level")
+
 	flag.Parse()
 
 	_, err := url.Parse(cnf.flagResponseURLAddress)
@@ -35,6 +38,9 @@ func GetServAdr() string {
 
 func GetResURLAdr() string {
 	return cnf.flagResponseURLAddress
+}
+func GetLoggerLevel() string {
+	return cnf.flagLoggerLevel
 }
 
 func stringVarEnv(p *string, name string) {
