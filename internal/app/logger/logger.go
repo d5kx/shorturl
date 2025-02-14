@@ -23,7 +23,7 @@ type (
 	}
 )
 
-var Log *zap.Logger
+var Log *zap.Logger = zap.NewNop()
 
 func Init(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)

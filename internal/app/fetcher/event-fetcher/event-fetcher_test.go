@@ -52,7 +52,7 @@ func TestRouter(t *testing.T) {
 			body:                "http://ya.ru",
 			expectedCode:        http.StatusCreated,
 			expectedContentType: "text/plain",
-			expectedBody:        "http://localhost:8080/AbCdEf",
+			expectedBody:        conf.GetResURLAdr() + "/AbCdEf",
 		},
 		{
 			name:                "POST: wrong Content-Type",
