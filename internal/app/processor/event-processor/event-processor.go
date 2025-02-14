@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/d5kx/shorturl/cmd/shortener/conf"
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/app/storage"
 )

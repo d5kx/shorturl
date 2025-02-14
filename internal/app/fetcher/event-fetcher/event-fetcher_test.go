@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/d5kx/shorturl/cmd/shortener/conf"
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/storage/mock"
 )
@@ -52,7 +52,7 @@ func TestRouter(t *testing.T) {
 			body:                "http://ya.ru",
 			expectedCode:        http.StatusCreated,
 			expectedContentType: "text/plain",
-			expectedBody:        "http://localhost:8080/AbCdEf",
+			expectedBody:        conf.GetResURLAdr() + "/AbCdEf",
 		},
 		{
 			name:                "POST: wrong Content-Type",

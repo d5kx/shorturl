@@ -1,11 +1,12 @@
 package eventfetcher
 
 import (
+	"github.com/d5kx/shorturl/internal/app/logger"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/d5kx/shorturl/cmd/shortener/conf"
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/util/e"
 )
@@ -21,10 +22,10 @@ func New(processor *eventprocessor.Processor) Fetcher {
 	f.Router = chi.NewRouter()
 	f.proc = processor
 
-	f.Router.Post(`/`, f.proc.Post)
-	f.Router.Get(`/{id}`, f.proc.Get)
-	f.Router.NotFound(f.proc.BadRequest)
-	f.Router.MethodNotAllowed(f.proc.BadRequest)
+	f.Router.Post(`/`, logger.RequestLogger(f.proc.Post))
+	f.Router.Get(`/{id}`, logger.RequestLogger(f.proc.Get))
+	f.Router.NotFound(logger.RequestLogger(f.proc.BadRequest))
+	f.Router.MethodNotAllowed(logger.RequestLogger(f.proc.BadRequest))
 
 	return f
 }

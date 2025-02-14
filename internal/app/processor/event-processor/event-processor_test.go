@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/d5kx/shorturl/cmd/shortener/conf"
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/storage/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +34,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 			body:                "http://ya.ru",
 			expectedCode:        http.StatusCreated,
 			expectedContentType: "text/plain",
-			expectedBody:        "http://localhost:8080/AbCdEf",
+			expectedBody:        conf.GetResURLAdr() + "/AbCdEf",
 		},
 		{
 			name:                "POST: wrong Content-Type",
