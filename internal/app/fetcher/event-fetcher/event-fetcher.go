@@ -1,7 +1,7 @@
 package eventfetcher
 
 import (
-	"github.com/d5kx/shorturl/internal/app/logger"
+	"github.com/d5kx/shorturl/internal/app/logger/zaplogger"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -14,18 +14,20 @@ import (
 type Fetcher struct {
 	Router chi.Router
 	proc   *eventprocessor.Processor
+	log    *zaplogger.ZapLogger
 }
 
 func New(processor *eventprocessor.Processor) Fetcher {
 	var f Fetcher
+	f.log = zaplogger.GetInstance()
 
-	f.Router = chi.NewRouter()
 	f.proc = processor
 
-	f.Router.Post(`/`, logger.RequestLogger(f.proc.Post))
-	f.Router.Get(`/{id}`, logger.RequestLogger(f.proc.Get))
-	f.Router.NotFound(logger.RequestLogger(f.proc.BadRequest))
-	f.Router.MethodNotAllowed(logger.RequestLogger(f.proc.BadRequest))
+	f.Router = chi.NewRouter()
+	f.Router.Post(`/`, f.log.RequestLogging(f.proc.Post))
+	f.Router.Get(`/{id}`, f.log.RequestLogging(f.proc.Get))
+	f.Router.NotFound(f.log.RequestLogging(f.proc.BadRequest))
+	f.Router.MethodNotAllowed(f.log.RequestLogging(f.proc.BadRequest))
 
 	return f
 }

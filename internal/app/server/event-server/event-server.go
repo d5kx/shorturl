@@ -3,21 +3,22 @@ package eventserver
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
-	"github.com/d5kx/shorturl/internal/app/logger"
+	"github.com/d5kx/shorturl/internal/app/logger/zaplogger"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"go.uber.org/zap"
 )
 
 type Server struct {
 	fetcher *eventfetcher.Fetcher
+	log     *zaplogger.ZapLogger
 }
 
 func (s *Server) Run() error {
-	if err := logger.Init(conf.GetLoggerLevel()); err != nil {
+	if err := s.log.Init(conf.GetLoggerLevel()); err != nil {
 		return e.WrapError("can't start logger", err)
 	}
 
-	logger.Log.Info("running server",
+	s.log.Zap().Info("running server",
 		zap.String("server address", conf.GetServAdr()),
 		zap.String("base address of responce", conf.GetResURLAdr()),
 	)
@@ -30,5 +31,8 @@ func (s *Server) Run() error {
 }
 
 func New(fetcher *eventfetcher.Fetcher) Server {
-	return Server{fetcher: fetcher}
+	return Server{
+		fetcher: fetcher,
+		log:     zaplogger.GetInstance(),
+	}
 }
