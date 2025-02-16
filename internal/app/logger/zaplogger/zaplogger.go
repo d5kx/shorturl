@@ -28,11 +28,11 @@ type (
 
 var log = ZapLogger{zap: zap.NewNop()}
 
-func GetInstance() *ZapLogger { return &log }
+func GetInstance() ZapLogger { return log }
 
-func (z *ZapLogger) Zap() *zap.Logger { return z.zap }
+func (z ZapLogger) Zap() *zap.Logger { return z.zap }
 
-func (z *ZapLogger) Init(level string) error {
+func Init(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
 		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
@@ -50,11 +50,11 @@ func (z *ZapLogger) Init(level string) error {
 		return e.WrapError("can't create logger configuration", err)
 	}
 	defer zl.Sync()
-	z.zap = zl
+	log.zap = zl
 	return nil
 }
 
-func (z *ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
+func (z ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -72,7 +72,26 @@ func (z *ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 		)
 	}
 }
+func (z ZapLogger) Info(msg string, fields ...any) {
+	var f []zapcore.Field
 
+	for _, v := range fields {
+		if field, ok := v.(zapcore.Field); ok {
+			f = append(f, field)
+		}
+	}
+	z.zap.Info(msg, f...)
+}
+func (z ZapLogger) Fatal(msg string, fields ...any) {
+	var f []zapcore.Field
+
+	for _, v := range fields {
+		if field, ok := v.(zapcore.Field); ok {
+			f = append(f, field)
+		}
+	}
+	z.zap.Fatal(msg, f...)
+}
 func (r *logResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)

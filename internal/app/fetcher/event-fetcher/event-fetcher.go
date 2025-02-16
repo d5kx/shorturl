@@ -1,7 +1,7 @@
 package eventfetcher
 
 import (
-	"github.com/d5kx/shorturl/internal/app/logger/zaplogger"
+	"github.com/d5kx/shorturl/internal/app/logger"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -14,13 +14,12 @@ import (
 type Fetcher struct {
 	Router chi.Router
 	proc   *eventprocessor.Processor
-	log    *zaplogger.ZapLogger
+	log    logger.Logger
 }
 
-func New(processor *eventprocessor.Processor) Fetcher {
+func New(processor *eventprocessor.Processor, logger logger.Logger) Fetcher {
 	var f Fetcher
-	f.log = zaplogger.GetInstance()
-
+	f.log = logger
 	f.proc = processor
 
 	f.Router = chi.NewRouter()

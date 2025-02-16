@@ -2,6 +2,7 @@ package eventfetcher
 
 import (
 	"bytes"
+	"github.com/d5kx/shorturl/internal/app/logger/simplelogger"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,8 +18,9 @@ import (
 )
 
 func TestRouter(t *testing.T) {
-	p := eventprocessor.New(mockstorage.New())
-	f := New(&p)
+	sl := simplelogger.GetInstance()
+	p := eventprocessor.New(mockstorage.New(), sl)
+	f := New(&p, sl)
 	conf.ParseFlags()
 	ts := httptest.NewServer(f.Router)
 	defer ts.Close()

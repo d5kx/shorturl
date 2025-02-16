@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
-
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
+	"github.com/d5kx/shorturl/internal/app/logger/simplelogger"
+	"github.com/d5kx/shorturl/internal/app/logger/zaplogger"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/server/event-server"
 	"github.com/d5kx/shorturl/internal/app/storage/memory"
@@ -16,16 +16,24 @@ import (
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\processor\event-processor\event-processor_test.go
 // D:\go_projects\shorturl\cmd\shortener>go vet -vettool=D:\go_projects\statictest-windows-amd64.exe ./..
 func init() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	conf.ParseFlags()
 }
 
 func main() {
-	p := eventprocessor.New(memstorage.New())
-	f := eventfetcher.New(&p)
 
-	server := eventserver.New(&f)
+	sl := simplelogger.GetInstance()
+
+	if err := zaplogger.Init(conf.GetLoggerLevel()); err != nil {
+		sl.Fatal("can't run zap logger", err)
+	}
+	l := zaplogger.GetInstance()
+
+	p := eventprocessor.New(memstorage.New(), sl)
+	f := eventfetcher.New(&p, l)
+
+	server := eventserver.New(&f, l)
+
 	if err := server.Run(); err != nil {
-		log.Fatal("can't run service", err)
+		sl.Fatal("can't run service", err)
 	}
 }

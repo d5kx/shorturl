@@ -2,6 +2,7 @@ package eventprocessor
 
 import (
 	"bytes"
+	"github.com/d5kx/shorturl/internal/app/logger/simplelogger"
 
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +17,8 @@ import (
 // go test -v -count 1 -coverprofile="cover.txt"
 // go tool cover -html=cover.txt
 func Test_methodPostHandleFunc(t *testing.T) {
-	p := New(mockstorage.New())
+	sl := simplelogger.GetInstance()
+	p := New(mockstorage.New(), sl)
 	conf.ParseFlags()
 	testCases := []struct {
 		name                string
@@ -86,7 +88,8 @@ func Test_methodPostHandleFunc(t *testing.T) {
 }
 
 func Test_methodGetHandleFunc(t *testing.T) {
-	p := New(mockstorage.New())
+	sl := simplelogger.GetInstance()
+	p := New(mockstorage.New(), sl)
 	//conf.ParseFlags()
 	testCases := []struct {
 		name             string

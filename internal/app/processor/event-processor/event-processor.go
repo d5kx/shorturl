@@ -1,8 +1,8 @@
 package eventprocessor
 
 import (
+	"github.com/d5kx/shorturl/internal/app/logger"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -12,11 +12,15 @@ import (
 )
 
 type Processor struct {
-	db storage.Storage
+	db  storage.Storage
+	log logger.Logger
 }
 
-func New(storage storage.Storage) Processor {
-	return Processor{db: storage}
+func New(storage storage.Storage, logger logger.Logger) Processor {
+	return Processor{
+		db:  storage,
+		log: logger,
+	}
 }
 
 func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
@@ -24,7 +28,7 @@ func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
 
 	if err != nil || l == nil {
 
-		log.Println("can't process GET request (short link does not exist in the database)")
+		p.log.Info("can't process GET request (short link does not exist in the database)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -35,7 +39,7 @@ func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
 
 func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
-		log.Println("can't process POST request (wrong Content-Type)")
+		p.log.Info("can't process POST request (wrong Content-Type)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -43,7 +47,7 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	b, _ := io.ReadAll(req.Body)
 	defer req.Body.Close()
 	if len(b) == 0 {
-		log.Println("can't process POST request (no link in body request)")
+		p.log.Info("can't process POST request (no link in body request)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -54,7 +58,7 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 
 	sURL, err := p.db.Save(&l)
 	if err != nil {
-		log.Println("can't process POST request (short link is not saved in the database)")
+		p.log.Info("can't process POST request (short link is not saved in the database)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -63,7 +67,7 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write([]byte(strings.Join([]string{conf.GetResURLAdr(), "/", sURL}, "")))
 	if err != nil {
-		log.Println("can't process POST request (can't write response body)")
+		p.log.Info("can't process POST request (can't write response body)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
