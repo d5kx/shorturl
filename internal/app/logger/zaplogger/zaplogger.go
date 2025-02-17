@@ -2,7 +2,10 @@ package zaplogger
 
 import (
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/d5kx/shorturl/internal/app/conf"
 
 	"github.com/d5kx/shorturl/internal/util/e"
 
@@ -26,13 +29,23 @@ type (
 	}
 )
 
-var log = ZapLogger{zap: zap.NewNop()}
+var (
+	log  = ZapLogger{zap: zap.NewNop()}
+	once sync.Once
+)
 
-func GetInstance() ZapLogger { return log }
+func GetInstance() (ZapLogger, error) {
+	var err error = nil
+	once.Do(func() {
+		err = zapLoggerInit(conf.GetLoggerLevel())
+	})
+
+	return log, err
+}
 
 func (z ZapLogger) Zap() *zap.Logger { return z.zap }
 
-func Init(level string) error {
+func zapLoggerInit(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
 		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)

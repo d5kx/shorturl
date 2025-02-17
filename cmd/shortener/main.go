@@ -23,10 +23,10 @@ func main() {
 
 	sl := simplelogger.GetInstance()
 
-	if err := zaplogger.Init(conf.GetLoggerLevel()); err != nil {
+	l, err := zaplogger.GetInstance()
+	if err != nil {
 		sl.Fatal("can't run zap logger", err)
 	}
-	l := zaplogger.GetInstance()
 
 	p := eventprocessor.New(memstorage.New(), sl)
 	f := eventfetcher.New(&p, l)
