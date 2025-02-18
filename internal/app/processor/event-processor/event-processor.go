@@ -1,8 +1,8 @@
 package eventprocessor
 
 import (
+	"bytes"
 	"github.com/d5kx/shorturl/internal/app/log"
-	"io"
 	"net/http"
 	"strings"
 
@@ -44,16 +44,16 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	b, _ := io.ReadAll(req.Body)
+	var buf bytes.Buffer
+	buf.ReadFrom(req.Body)
 	defer req.Body.Close()
-	if len(b) == 0 {
+	if buf.Len() == 0 {
 		p.log.Info("can't process POST request (no link in body request)")
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	var l = link.Link{OriginalURL: string(b) /*sb.String()*/}
-
+	var l = link.Link{OriginalURL: buf.String()}
 	sURL, err := p.db.Save(&l)
 	if err != nil {
 		p.log.Info("can't process POST request (short link is not saved in the database)")
@@ -61,9 +61,13 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	buf.Reset()
+	buf.WriteString(conf.GetResURLAdr() + "/")
+	buf.WriteString(sURL)
+
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte(conf.GetResURLAdr() + "/" + sURL))
+	_, err = res.Write(buf.Bytes())
 	if err != nil {
 		p.log.Info("can't process POST request (can't write response body)")
 		res.WriteHeader(http.StatusBadRequest)
