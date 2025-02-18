@@ -1,4 +1,4 @@
-package mockstorage
+package mockstor
 
 import (
 	"errors"

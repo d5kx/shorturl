@@ -1,7 +1,7 @@
 package eventfetcher
 
 import (
-	"github.com/d5kx/shorturl/internal/app/logger"
+	"github.com/d5kx/shorturl/internal/app/log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"

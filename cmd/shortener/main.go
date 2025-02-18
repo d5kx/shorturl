@@ -3,11 +3,11 @@ package main
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
-	"github.com/d5kx/shorturl/internal/app/logger/simplelogger"
-	"github.com/d5kx/shorturl/internal/app/logger/zaplogger"
+	"github.com/d5kx/shorturl/internal/app/log/simple"
+	"github.com/d5kx/shorturl/internal/app/log/zap"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/server/event-server"
-	"github.com/d5kx/shorturl/internal/app/storage/memory"
+	"github.com/d5kx/shorturl/internal/app/stor/mem"
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
@@ -20,18 +20,17 @@ func init() {
 }
 
 func main() {
-
 	sl := simplelogger.GetInstance()
 
-	l, err := zaplogger.GetInstance()
+	zl, err := zaplogger.GetInstance()
 	if err != nil {
-		sl.Fatal("can't run zap logger", err)
+		sl.Fatal("can't run zap log", err)
 	}
 
-	p := eventprocessor.New(memstorage.New(), sl)
-	f := eventfetcher.New(&p, l)
+	p := eventprocessor.New(memstor.New(), zl)
+	f := eventfetcher.New(&p, zl)
 
-	server := eventserver.New(&f, l)
+	server := eventserver.New(&f, zl)
 
 	if err := server.Run(); err != nil {
 		sl.Fatal("can't run service", err)

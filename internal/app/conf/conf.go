@@ -17,7 +17,7 @@ var cnf flags
 func ParseFlags() {
 	flag.StringVar(&cnf.flagServerAddress, "a", "localhost:8080", "address and port to start the HTTP server")
 	flag.StringVar(&cnf.flagResponseURLAddress, "b", "http://localhost:8080", "base address of the resulting shortened URL")
-	flag.StringVar(&cnf.flagLoggerLevel, "l", "info", "logger level")
+	flag.StringVar(&cnf.flagLoggerLevel, "l", "info", "log level")
 
 	flag.Parse()
 

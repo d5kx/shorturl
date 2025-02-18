@@ -3,7 +3,7 @@ package eventserver
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
-	"github.com/d5kx/shorturl/internal/app/logger"
+	"github.com/d5kx/shorturl/internal/app/log"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"go.uber.org/zap"
 )

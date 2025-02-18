@@ -1,4 +1,4 @@
-package memstorage
+package memstor
 
 import (
 	"github.com/d5kx/shorturl/internal/app/link"
