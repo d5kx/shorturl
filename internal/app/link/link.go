@@ -23,7 +23,7 @@ type Link struct {
 	OriginalURL string
 }
 
-func (l Link) ShortURL() string {
+func ShortURL() string {
 	var b strings.Builder
 
 	rand.NewSource(time.Now().UnixNano())

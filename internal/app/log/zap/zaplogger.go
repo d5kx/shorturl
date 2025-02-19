@@ -85,26 +85,29 @@ func (z ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 		)
 	}
 }
+
 func (z ZapLogger) Info(msg string, fields ...any) {
-	var f []zapcore.Field
-
-	for _, v := range fields {
-		if field, ok := v.(zapcore.Field); ok {
-			f = append(f, field)
-		}
-	}
-	z.zap.Info(msg, f...)
+	z.zap.Info(msg, z.anyToZapFields(fields)...)
 }
+
 func (z ZapLogger) Fatal(msg string, fields ...any) {
-	var f []zapcore.Field
+	z.zap.Fatal(msg, z.anyToZapFields(fields)...)
+}
 
+func (z ZapLogger) Debug(msg string, fields ...any) {
+	z.zap.Debug(msg, z.anyToZapFields(fields)...)
+}
+
+func (z ZapLogger) anyToZapFields(fields []any) []zapcore.Field {
+	var f []zapcore.Field
 	for _, v := range fields {
 		if field, ok := v.(zapcore.Field); ok {
 			f = append(f, field)
 		}
 	}
-	z.zap.Fatal(msg, f...)
+	return f
 }
+
 func (r *logResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)

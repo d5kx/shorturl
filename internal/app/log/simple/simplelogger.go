@@ -1,13 +1,14 @@
 package simplelogger
 
 import (
-	"github.com/d5kx/shorturl/internal/app/conf"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/d5kx/shorturl/internal/app/conf"
 )
 
 type (
@@ -56,12 +57,19 @@ func (s SimpleLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 		)
 	}
 }
+
 func (s SimpleLogger) Info(msg string, fields ...any) {
 	s.simple.Println(msg, fields)
 }
+
 func (s SimpleLogger) Fatal(msg string, fields ...any) {
 	s.simple.Fatal(msg, fields)
 }
+
+func (s SimpleLogger) Debug(msg string, fields ...any) {
+	s.simple.Println(msg, fields)
+}
+
 func (r *logResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
