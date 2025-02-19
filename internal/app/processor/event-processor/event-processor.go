@@ -109,13 +109,27 @@ func (p *Processor) PostApiShorten(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
 	// сериализуем ответ сервера
-	enc := json.NewEncoder(res)
-	if err := enc.Encode(response); err != nil {
-		p.log.Debug("can't encode response", zap.Error(err))
+	jsonByte, err := json.Marshal(response)
+	if err != nil {
+		p.log.Debug("can't process POST request (can't encode response)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		p.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	/*
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(response); err != nil {
+			p.log.Debug("can't encode response", zap.Error(err))
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}*/
 }
 
 func (p *Processor) BadRequest(res http.ResponseWriter, req *http.Request) {
@@ -123,10 +137,10 @@ func (p *Processor) BadRequest(res http.ResponseWriter, req *http.Request) {
 }
 
 func (p *Processor) checkContentType(req *http.Request, t string) bool {
-	ctype := req.Header.Get("Content-Type")
-	if !strings.Contains(ctype, t) {
+	contentType := req.Header.Get("Content-Type")
+	if !strings.Contains(contentType, t) {
 		p.log.Debug("can't process POST request (wrong Content-Type)",
-			zap.String("actual", ctype),
+			zap.String("actual", contentType),
 			zap.String("expected", t),
 		)
 		return false

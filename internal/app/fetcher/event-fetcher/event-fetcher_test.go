@@ -2,7 +2,6 @@ package eventfetcher
 
 import (
 	"bytes"
-	"github.com/d5kx/shorturl/internal/app/log/simple"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,15 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/d5kx/shorturl/internal/app/conf"
+	"github.com/d5kx/shorturl/internal/app/log/mock"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/stor/mock"
 )
 
 func TestRouter(t *testing.T) {
-	sl := simplelogger.GetInstance()
-	p := eventprocessor.New(mockstor.New(), sl)
-	f := New(&p, sl)
 	conf.ParseFlags()
+	ml := mocklogger.GetInstance()
+	p := eventprocessor.New(mockstor.New(), ml)
+	f := New(&p, ml)
+
 	ts := httptest.NewServer(f.Router)
 	defer ts.Close()
 
@@ -85,6 +86,16 @@ func TestRouter(t *testing.T) {
 			expectedCode:        http.StatusBadRequest,
 			expectedContentType: "",
 			expectedBody:        "",
+		},
+		{
+			name:                "POST: api/json valid request",
+			path:                "/api/shorten",
+			method:              http.MethodPost,
+			contentType:         "application/json",
+			body:                `{"url":"https://practicum.yandex.ru"}`,
+			expectedCode:        http.StatusCreated,
+			expectedContentType: "application/json",
+			expectedBody:        `{"result":"` + conf.GetResURLAdr() + `/AbCdEf"` + `}`,
 		},
 		{
 			name:                "GET: valid request",

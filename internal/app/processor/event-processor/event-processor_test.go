@@ -2,8 +2,7 @@ package eventprocessor
 
 import (
 	"bytes"
-	"github.com/d5kx/shorturl/internal/app/log/simple"
-
+	"github.com/d5kx/shorturl/internal/app/log/mock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,12 +15,14 @@ import (
 
 // go test -v -count 1 -coverprofile="cover.txt"
 // go tool cover -html=cover.txt
-func Test_methodPostHandleFunc(t *testing.T) {
-	sl := simplelogger.GetInstance()
-	p := New(mockstor.New(), sl)
+func Test_methodPost(t *testing.T) {
 	conf.ParseFlags()
+	ml := mocklogger.GetInstance()
+	p := New(mockstor.New(), ml)
+
 	testCases := []struct {
 		name                string
+		path                string
 		method              string
 		contentType         string
 		body                string
@@ -31,6 +32,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 	}{
 		{
 			name:                "POST: valid request",
+			path:                "/",
 			method:              http.MethodPost,
 			contentType:         "text/plain",
 			body:                "http://ya.ru",
@@ -40,6 +42,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 		},
 		{
 			name:                "POST: wrong Content-Type",
+			path:                "/",
 			method:              http.MethodPost,
 			contentType:         "text/json",
 			body:                "http://ya.ru",
@@ -49,6 +52,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 		},
 		{
 			name:                "POST: no link in the request body",
+			path:                "/",
 			method:              http.MethodPost,
 			contentType:         "text/plain",
 			body:                "",
@@ -58,6 +62,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 		},
 		{
 			name:                "POST: db error emulation",
+			path:                "/",
 			method:              http.MethodPost,
 			contentType:         "text/plain",
 			body:                "db_error",
@@ -70,7 +75,7 @@ func Test_methodPostHandleFunc(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			body := bytes.NewBuffer([]byte(tc.body))
-			r := httptest.NewRequest(tc.method, "/", body)
+			r := httptest.NewRequest(tc.method, tc.path, body)
 			r.Header.Set("Content-Type", tc.contentType)
 			w := httptest.NewRecorder()
 			p.Post(w, r)
@@ -87,9 +92,53 @@ func Test_methodPostHandleFunc(t *testing.T) {
 	}
 }
 
+func Test_methodPostApiShorten(t *testing.T) {
+	ml := mocklogger.GetInstance()
+	p := New(mockstor.New(), ml)
+	testCases := []struct {
+		name                string
+		path                string
+		method              string
+		contentType         string
+		body                string
+		expectedCode        int
+		expectedContentType string
+		expectedBody        string
+	}{
+		{
+			name:                "POST: api/json valid request",
+			path:                "/api/shorten",
+			method:              http.MethodPost,
+			contentType:         "application/json",
+			body:                `{"url":"https://practicum.yandex.ru"}`,
+			expectedCode:        http.StatusCreated,
+			expectedContentType: "application/json",
+			expectedBody:        `{"result":"` + conf.GetResURLAdr() + `/AbCdEf"` + `}`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			body := bytes.NewBuffer([]byte(tc.body))
+			r := httptest.NewRequest(tc.method, tc.path, body)
+			r.Header.Set("Content-Type", tc.contentType)
+			w := httptest.NewRecorder()
+			p.PostApiShorten(w, r)
+
+			b := make([]byte, w.Body.Len())
+			w.Body.Read(b)
+			var sb strings.Builder
+			sb.Write(b)
+
+			assert.Equal(t, tc.expectedCode, w.Code, "Код ответа не совпадает с ожидаемым")
+			assert.Equal(t, tc.expectedContentType, w.Header().Get("Content-Type"), "ContentType не совпадает с ожидаемым")
+			assert.Equal(t, tc.expectedBody, sb.String(), "Тело ответа не совпадает с ожидаемым")
+		})
+	}
+}
 func Test_methodGetHandleFunc(t *testing.T) {
-	sl := simplelogger.GetInstance()
-	p := New(mockstor.New(), sl)
+	ml := mocklogger.GetInstance()
+	p := New(mockstor.New(), ml)
 	//conf.ParseFlags()
 	testCases := []struct {
 		name             string
