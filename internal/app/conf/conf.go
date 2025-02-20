@@ -21,14 +21,18 @@ func ParseFlags() {
 
 	flag.Parse()
 
+	stringVarEnv(&cnf.flagServerAddress, "SERVER_ADDRESS")
+	stringVarEnv(&cnf.flagResponseURLAddress, "BASE_URL")
+
 	_, err := url.Parse(cnf.flagResponseURLAddress)
 	if err != nil {
 		//loggers.Println("can't parse the base address of the resulting shortened URL (" + cnf.flagResponseURLAddress + "), set http://localhost:8080")
 		cnf.flagResponseURLAddress = "http://localhost:8080"
 	}
 
-	stringVarEnv(&cnf.flagServerAddress, "SERVER_ADDRESS")
-	stringVarEnv(&cnf.flagResponseURLAddress, "BASE_URL")
+	if cnf.flagLoggerLevel != "info" && cnf.flagLoggerLevel != "debug" {
+		cnf.flagLoggerLevel = "info"
+	}
 }
 
 func GetServAdr() string {
