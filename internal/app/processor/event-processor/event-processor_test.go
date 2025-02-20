@@ -124,7 +124,7 @@ func Test_methodPostApiShorten(t *testing.T) {
 			r := httptest.NewRequest(tc.method, tc.path, body)
 			r.Header.Set("Content-Type", tc.contentType)
 			w := httptest.NewRecorder()
-			p.PostApiShorten(w, r)
+			p.PostAPIShorten(w, r)
 
 			b := make([]byte, w.Body.Len())
 			w.Body.Read(b)
