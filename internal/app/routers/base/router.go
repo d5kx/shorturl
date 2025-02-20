@@ -35,7 +35,7 @@ func New(processor processor.Processor, logger logger.Logger) *BaseRouter {
 func (r *BaseRouter) Run() error {
 	err := http.ListenAndServe(conf.GetServAdr(), r.Router)
 	if err != nil {
-		return e.WrapError("can't start http server", err)
+		return e.WrapError("can't start http servers", err)
 	}
 
 	return nil

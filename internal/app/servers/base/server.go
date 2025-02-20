@@ -1,4 +1,4 @@
-package eventserver
+package baseserver
 
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
@@ -15,8 +15,8 @@ type Server struct {
 
 func (s *Server) Run() error {
 
-	s.log.Info("running server",
-		zap.String("server address", conf.GetServAdr()),
+	s.log.Info("running servers",
+		zap.String("servers address", conf.GetServAdr()),
 		zap.String("base address of response", conf.GetResURLAdr()),
 		zap.String("log level", conf.GetLoggerLevel()),
 	)
@@ -28,9 +28,9 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func New(fetcher routers.Router, logger logger.Logger) *Server {
+func New(router routers.Router, logger logger.Logger) *Server {
 	return &Server{
-		router: fetcher,
+		router: router,
 		log:    logger,
 	}
 }

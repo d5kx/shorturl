@@ -6,7 +6,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/log/zap"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/routers/base"
-	"github.com/d5kx/shorturl/internal/app/server/event-server"
+	"github.com/d5kx/shorturl/internal/app/servers/base"
 	"github.com/d5kx/shorturl/internal/app/stor/mem"
 )
 
@@ -30,7 +30,7 @@ func main() {
 	p := eventprocessor.New(memstor.New(), zl)
 	f := baserouter.New(p, zl)
 
-	server := eventserver.New(f, zl)
+	server := baseserver.New(f, zl)
 	if err := server.Run(); err != nil {
 		sl.Fatal("can't run service", err)
 	}
