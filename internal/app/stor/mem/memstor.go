@@ -1,9 +1,10 @@
-package memstorage
+package memstor
 
 import (
+	"time"
+
 	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/util/e"
-	"time"
 )
 
 type Storage struct {
@@ -24,7 +25,7 @@ func (s Storage) Save(l *link.Link) (string, error) {
 	isExist := true
 
 	for isExist {
-		sURL = l.ShortURL()
+		sURL = link.ShortURL()
 		isExist, err = s.IsExist(sURL)
 
 		if err != nil {
