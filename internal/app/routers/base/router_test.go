@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/d5kx/shorturl/internal/app/conf"
+	"github.com/d5kx/shorturl/internal/app/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/log/mock"
-	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
 	"github.com/d5kx/shorturl/internal/app/stor/mock"
 )
 
 func TestRouter(t *testing.T) {
 	conf.ParseFlags()
 	ml := mocklogger.New()
-	p := eventprocessor.New(mockstor.New(), ml)
+	p := basehandler.New(mockstor.New(), ml)
 	f := New(p, ml)
 
 	ts := httptest.NewServer(f.Router)

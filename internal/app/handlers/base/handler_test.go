@@ -1,4 +1,4 @@
-package eventprocessor
+package basehandler
 
 import (
 	"bytes"

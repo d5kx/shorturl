@@ -1,4 +1,4 @@
-package eventprocessor
+package basehandler
 
 import (
 	"bytes"
@@ -15,23 +15,23 @@ import (
 	"go.uber.org/zap"
 )
 
-type Processor struct {
+type Handler struct {
 	db  stor.Storage
 	log logger.Logger
 }
 
-func New(storage stor.Storage, logger logger.Logger) *Processor {
-	return &Processor{
+func New(storage stor.Storage, logger logger.Logger) *Handler {
+	return &Handler{
 		db:  storage,
 		log: logger,
 	}
 }
 
-func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 	short := strings.TrimPrefix(req.URL.Path, "/")
-	l, err := p.db.Get(short)
+	l, err := h.db.Get(short)
 	if err != nil || l == nil {
-		p.log.Debug("can't process GET request (short link does not exist in the database)",
+		h.log.Debug("can't process GET request (short link does not exist in the database)",
 			zap.String("short", short),
 			zap.Error(err),
 		)
@@ -43,8 +43,8 @@ func (p *Processor) Get(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
-	if !p.checkContentType(req, "text/plain") {
+func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
+	if !h.checkContentType(req, "text/plain") {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -53,15 +53,15 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	buf.ReadFrom(req.Body)
 	defer req.Body.Close()
 	if buf.Len() == 0 {
-		p.log.Debug("can't process POST request (no link in body request)", zap.String("body", buf.String()))
+		h.log.Debug("can't process POST request (no link in body request)", zap.String("body", buf.String()))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	var l = link.Link{OriginalURL: buf.String()}
-	sURL, err := p.db.Save(&l)
+	sURL, err := h.db.Save(&l)
 	if err != nil {
-		p.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
+		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -74,14 +74,14 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write(buf.Bytes())
 	if err != nil {
-		p.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
+		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 }
 
-func (p *Processor) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
-	if !p.checkContentType(req, "application/json") {
+func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
+	if !h.checkContentType(req, "application/json") {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -90,15 +90,15 @@ func (p *Processor) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	var request models.RequestJSON
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&request); err != nil {
-		p.log.Debug("can't decode request JSON body", zap.Error(err))
+		h.log.Debug("can't decode request JSON body", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	var l = link.Link{OriginalURL: request.URL}
-	sURL, err := p.db.Save(&l)
+	sURL, err := h.db.Save(&l)
 	if err != nil {
-		p.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
+		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -112,13 +112,13 @@ func (p *Processor) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	// сериализуем ответ сервера
 	jsonByte, err := json.Marshal(response)
 	if err != nil {
-		p.log.Debug("can't process POST request (can't encode response)", zap.Error(err))
+		h.log.Debug("can't process POST request (can't encode response)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	_, err = res.Write(jsonByte)
 	if err != nil {
-		p.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
+		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -131,14 +131,14 @@ func (p *Processor) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		}*/
 }
 
-func (p *Processor) BadRequest(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) BadRequest(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusBadRequest)
 }
 
-func (p *Processor) checkContentType(req *http.Request, t string) bool {
+func (h *Handler) checkContentType(req *http.Request, t string) bool {
 	contentType := req.Header.Get("Content-Type")
 	if !strings.Contains(contentType, t) {
-		p.log.Debug("can't process POST request (wrong Content-Type)",
+		h.log.Debug("can't process POST request (wrong Content-Type)",
 			zap.String("actual", contentType),
 			zap.String("expected", t),
 		)
