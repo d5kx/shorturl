@@ -25,7 +25,7 @@ func New(processor *eventprocessor.Processor, logger logger.Logger) Fetcher {
 
 	f.Router = chi.NewRouter()
 	f.Router.Post(`/`, f.log.RequestLogging(f.proc.Post))
-	f.Router.Post(`/api/shorten`, f.log.RequestLogging(f.proc.PostApiShorten))
+	f.Router.Post(`/api/shorten`, f.log.RequestLogging(f.proc.PostAPIShorten))
 	f.Router.Get(`/{id}`, f.log.RequestLogging(f.proc.Get))
 	f.Router.NotFound(f.log.RequestLogging(f.proc.BadRequest))
 	f.Router.MethodNotAllowed(f.log.RequestLogging(f.proc.BadRequest))

@@ -81,7 +81,7 @@ func (p *Processor) Post(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (p *Processor) PostApiShorten(res http.ResponseWriter, req *http.Request) {
+func (p *Processor) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	if !p.checkContentType(req, "application/json") {
 		res.WriteHeader(http.StatusBadRequest)
 		return
