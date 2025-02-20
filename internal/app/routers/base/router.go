@@ -5,7 +5,7 @@ import (
 
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/handlers"
-	"github.com/d5kx/shorturl/internal/app/log"
+	"github.com/d5kx/shorturl/internal/app/loggers"
 	"github.com/d5kx/shorturl/internal/util/e"
 
 	"github.com/go-chi/chi/v5"
@@ -14,10 +14,10 @@ import (
 type BaseRouter struct {
 	Router chi.Router
 	proc   handlers.Handler
-	log    logger.Logger
+	log    loggers.Logger
 }
 
-func New(processor handlers.Handler, logger logger.Logger) *BaseRouter {
+func New(processor handlers.Handler, logger loggers.Logger) *BaseRouter {
 	var r BaseRouter
 	r.log = logger
 	r.proc = processor

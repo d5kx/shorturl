@@ -48,7 +48,7 @@ func (z *ZapLogger) init(level string) error {
 
 	zl, err := cfg.Build()
 	if err != nil {
-		return e.WrapError("can't create log configuration", err)
+		return e.WrapError("can't create loggers configuration", err)
 	}
 	defer zl.Sync()
 	z.zap = zl

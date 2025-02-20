@@ -8,19 +8,19 @@ import (
 
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/link"
-	"github.com/d5kx/shorturl/internal/app/log"
+	"github.com/d5kx/shorturl/internal/app/loggers"
 	"github.com/d5kx/shorturl/internal/app/models"
-	"github.com/d5kx/shorturl/internal/app/stor"
+	"github.com/d5kx/shorturl/internal/app/storages"
 
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	db  stor.Storage
-	log logger.Logger
+	db  storages.Storage
+	log loggers.Logger
 }
 
-func New(storage stor.Storage, logger logger.Logger) *Handler {
+func New(storage storages.Storage, logger loggers.Logger) *Handler {
 	return &Handler{
 		db:  storage,
 		log: logger,
@@ -125,7 +125,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	/*
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(response); err != nil {
-			p.log.Debug("can't encode response", zap.Error(err))
+			p.loggers.Debug("can't encode response", zap.Error(err))
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}*/

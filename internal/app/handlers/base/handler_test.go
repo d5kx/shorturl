@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/d5kx/shorturl/internal/app/log/mock"
+	"github.com/d5kx/shorturl/internal/app/loggers/mock"
 
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/stor/mock"
+	"github.com/d5kx/shorturl/internal/app/storages/mock"
 	"github.com/stretchr/testify/assert"
 )
 

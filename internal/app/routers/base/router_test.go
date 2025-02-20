@@ -13,8 +13,8 @@ import (
 
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/handlers/base"
-	"github.com/d5kx/shorturl/internal/app/log/mock"
-	"github.com/d5kx/shorturl/internal/app/stor/mock"
+	"github.com/d5kx/shorturl/internal/app/loggers/mock"
+	"github.com/d5kx/shorturl/internal/app/storages/mock"
 )
 
 func TestRouter(t *testing.T) {

@@ -2,7 +2,7 @@ package baseserver
 
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/log"
+	"github.com/d5kx/shorturl/internal/app/loggers"
 	"github.com/d5kx/shorturl/internal/app/routers"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"go.uber.org/zap"
@@ -10,7 +10,7 @@ import (
 
 type Server struct {
 	router routers.Router
-	log    logger.Logger
+	log    loggers.Logger
 }
 
 func (s *Server) Run() error {
@@ -18,7 +18,7 @@ func (s *Server) Run() error {
 	s.log.Info("running servers",
 		zap.String("servers address", conf.GetServAdr()),
 		zap.String("base address of response", conf.GetResURLAdr()),
-		zap.String("log level", conf.GetLoggerLevel()),
+		zap.String("loggers level", conf.GetLoggerLevel()),
 	)
 	err := s.router.Run()
 	if err != nil {
@@ -28,7 +28,7 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func New(router routers.Router, logger logger.Logger) *Server {
+func New(router routers.Router, logger loggers.Logger) *Server {
 	return &Server{
 		router: router,
 		log:    logger,

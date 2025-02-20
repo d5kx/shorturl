@@ -1,4 +1,4 @@
-package stor
+package storages
 
 import (
 	"github.com/d5kx/shorturl/internal/app/link"
