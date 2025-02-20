@@ -2,14 +2,14 @@ package eventserver
 
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
+	"github.com/d5kx/shorturl/internal/app/fetcher"
 	"github.com/d5kx/shorturl/internal/app/log"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"go.uber.org/zap"
 )
 
 type Server struct {
-	fetcher *eventfetcher.Fetcher
+	fetcher fetcher.Fetcher
 	log     logger.Logger
 }
 
@@ -27,8 +27,8 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func New(fetcher *eventfetcher.Fetcher, logger logger.Logger) Server {
-	return Server{
+func New(fetcher fetcher.Fetcher, logger logger.Logger) *Server {
+	return &Server{
 		fetcher: fetcher,
 		log:     logger,
 	}

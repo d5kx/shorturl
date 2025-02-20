@@ -3,22 +3,21 @@ package eventfetcher
 import (
 	"net/http"
 
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/log"
+	"github.com/d5kx/shorturl/internal/app/processor"
+	"github.com/d5kx/shorturl/internal/util/e"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
-	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Fetcher struct {
 	Router chi.Router
-	proc   *eventprocessor.Processor
+	proc   processor.Processor
 	log    logger.Logger
 }
 
-func New(processor *eventprocessor.Processor, logger logger.Logger) Fetcher {
+func New(processor processor.Processor, logger logger.Logger) *Fetcher {
 	var f Fetcher
 	f.log = logger
 	f.proc = processor
@@ -30,7 +29,7 @@ func New(processor *eventprocessor.Processor, logger logger.Logger) Fetcher {
 	f.Router.NotFound(f.log.RequestLogging(f.proc.BadRequest))
 	f.Router.MethodNotAllowed(f.log.RequestLogging(f.proc.BadRequest))
 
-	return f
+	return &f
 }
 
 func (f *Fetcher) Fetch() error {

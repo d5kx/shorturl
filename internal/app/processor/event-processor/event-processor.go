@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/d5kx/shorturl/internal/app/log"
-
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/link"
+	"github.com/d5kx/shorturl/internal/app/log"
 	"github.com/d5kx/shorturl/internal/app/models"
 	"github.com/d5kx/shorturl/internal/app/stor"
 
@@ -21,8 +20,8 @@ type Processor struct {
 	log logger.Logger
 }
 
-func New(storage stor.Storage, logger logger.Logger) Processor {
-	return Processor{
+func New(storage stor.Storage, logger logger.Logger) *Processor {
+	return &Processor{
 		db:  storage,
 		log: logger,
 	}

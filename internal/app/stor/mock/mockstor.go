@@ -9,8 +9,8 @@ import (
 type Storage struct {
 }
 
-func New() Storage {
-	return Storage{}
+func New() *Storage {
+	return &Storage{}
 }
 
 func (s Storage) Save(l *link.Link) (string, error) {

@@ -28,9 +28,9 @@ func main() {
 	}
 
 	p := eventprocessor.New(memstor.New(), zl)
-	f := eventfetcher.New(&p, zl)
+	f := eventfetcher.New(p, zl)
 
-	server := eventserver.New(&f, zl)
+	server := eventserver.New(f, zl)
 	if err := server.Run(); err != nil {
 		sl.Fatal("can't run service", err)
 	}

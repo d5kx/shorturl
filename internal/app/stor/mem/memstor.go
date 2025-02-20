@@ -15,8 +15,8 @@ func (s Storage) GetDB() map[string]link.Link {
 	return s.db
 }
 
-func New() Storage {
-	return Storage{db: make(map[string]link.Link)}
+func New() *Storage {
+	return &Storage{db: make(map[string]link.Link)}
 }
 
 func (s Storage) Save(l *link.Link) (string, error) {
