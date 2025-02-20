@@ -2,11 +2,12 @@ package eventprocessor
 
 import (
 	"bytes"
-	"github.com/d5kx/shorturl/internal/app/log/mock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/d5kx/shorturl/internal/app/log/mock"
 
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/stor/mock"
