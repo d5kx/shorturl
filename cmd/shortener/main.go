@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/fetcher/event-fetcher"
 	"github.com/d5kx/shorturl/internal/app/log/simple"
 	"github.com/d5kx/shorturl/internal/app/log/zap"
 	"github.com/d5kx/shorturl/internal/app/processor/event-processor"
+	"github.com/d5kx/shorturl/internal/app/routers/base"
 	"github.com/d5kx/shorturl/internal/app/server/event-server"
 	"github.com/d5kx/shorturl/internal/app/stor/mem"
 )
@@ -28,7 +28,7 @@ func main() {
 	}
 
 	p := eventprocessor.New(memstor.New(), zl)
-	f := eventfetcher.New(p, zl)
+	f := baserouter.New(p, zl)
 
 	server := eventserver.New(f, zl)
 	if err := server.Run(); err != nil {
