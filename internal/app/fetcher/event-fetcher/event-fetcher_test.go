@@ -19,9 +19,9 @@ import (
 
 func TestRouter(t *testing.T) {
 	conf.ParseFlags()
-	ml := mocklogger.GetInstance()
+	ml := mocklogger.New()
 	p := eventprocessor.New(mockstor.New(), ml)
-	f := New(&p, ml)
+	f := New(p, ml)
 
 	ts := httptest.NewServer(f.Router)
 	defer ts.Close()

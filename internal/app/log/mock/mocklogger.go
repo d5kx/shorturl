@@ -9,12 +9,8 @@ type (
 	}
 )
 
-var (
-	loggerInstance MockLogger
-)
-
-func GetInstance() MockLogger {
-	return loggerInstance
+func New() *MockLogger {
+	return &MockLogger{}
 }
 
 func (m MockLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {

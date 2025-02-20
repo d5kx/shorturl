@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/d5kx/shorturl/internal/app/conf"
@@ -27,19 +26,13 @@ type (
 	}
 )
 
-var (
-	loggerInstance SimpleLogger
-	once           sync.Once
-)
-
-func GetInstance() SimpleLogger {
-	once.Do(func() {
-		loggerInstance.simple = log.New(os.Stdout, strings.ToUpper(conf.GetLoggerLevel())+" ", log.LstdFlags|log.Lmicroseconds)
-	})
-	return loggerInstance
+func New() *SimpleLogger {
+	return &SimpleLogger{
+		simple: log.New(os.Stdout, strings.ToUpper(conf.GetLoggerLevel())+" ", log.LstdFlags|log.Lmicroseconds),
+	}
 }
 
-func (s SimpleLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
+func (s *SimpleLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -58,15 +51,15 @@ func (s SimpleLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s SimpleLogger) Info(msg string, fields ...any) {
+func (s *SimpleLogger) Info(msg string, fields ...any) {
 	s.simple.Println(msg, fields)
 }
 
-func (s SimpleLogger) Fatal(msg string, fields ...any) {
+func (s *SimpleLogger) Fatal(msg string, fields ...any) {
 	s.simple.Fatal(msg, fields)
 }
 
-func (s SimpleLogger) Debug(msg string, fields ...any) {
+func (s *SimpleLogger) Debug(msg string, fields ...any) {
 	s.simple.Println(msg, fields)
 }
 

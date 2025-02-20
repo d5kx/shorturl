@@ -1,11 +1,9 @@
 package zaplogger
 
 import (
-	"net/http"
-	"sync"
-	"time"
-
 	"github.com/d5kx/shorturl/internal/app/conf"
+	"net/http"
+	"time"
 
 	"github.com/d5kx/shorturl/internal/util/e"
 
@@ -29,23 +27,13 @@ type (
 	}
 )
 
-var (
-	log  = ZapLogger{zap: zap.NewNop()}
-	once sync.Once
-)
-
-func GetInstance() (ZapLogger, error) {
-	var err error = nil
-	once.Do(func() {
-		err = zapLoggerInit(conf.GetLoggerLevel())
-	})
-
-	return log, err
+func New() (*ZapLogger, error) {
+	log := ZapLogger{zap: zap.NewNop()}
+	err := log.init(conf.GetLoggerLevel())
+	return &log, err
 }
 
-func (z ZapLogger) Zap() *zap.Logger { return z.zap }
-
-func zapLoggerInit(level string) error {
+func (z *ZapLogger) init(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
 		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
@@ -63,11 +51,11 @@ func zapLoggerInit(level string) error {
 		return e.WrapError("can't create log configuration", err)
 	}
 	defer zl.Sync()
-	log.zap = zl
+	z.zap = zl
 	return nil
 }
 
-func (z ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
+func (z *ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -86,19 +74,19 @@ func (z ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (z ZapLogger) Info(msg string, fields ...any) {
+func (z *ZapLogger) Info(msg string, fields ...any) {
 	z.zap.Info(msg, z.anyToZapFields(fields)...)
 }
 
-func (z ZapLogger) Fatal(msg string, fields ...any) {
+func (z *ZapLogger) Fatal(msg string, fields ...any) {
 	z.zap.Fatal(msg, z.anyToZapFields(fields)...)
 }
 
-func (z ZapLogger) Debug(msg string, fields ...any) {
+func (z *ZapLogger) Debug(msg string, fields ...any) {
 	z.zap.Debug(msg, z.anyToZapFields(fields)...)
 }
 
-func (z ZapLogger) anyToZapFields(fields []any) []zapcore.Field {
+func (z *ZapLogger) anyToZapFields(fields []any) []zapcore.Field {
 	var f []zapcore.Field
 	for _, v := range fields {
 		if field, ok := v.(zapcore.Field); ok {

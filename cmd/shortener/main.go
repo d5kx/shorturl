@@ -20,9 +20,9 @@ func init() {
 }
 
 func main() {
-	sl := simplelogger.GetInstance()
+	sl := simplelogger.New()
 
-	zl, err := zaplogger.GetInstance()
+	zl, err := zaplogger.New()
 	if err != nil {
 		sl.Fatal("can't run zap log", err)
 	}

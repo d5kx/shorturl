@@ -18,7 +18,7 @@ import (
 // go tool cover -html=cover.txt
 func Test_methodPost(t *testing.T) {
 	conf.ParseFlags()
-	ml := mocklogger.GetInstance()
+	ml := mocklogger.New()
 	p := New(mockstor.New(), ml)
 
 	testCases := []struct {
@@ -94,7 +94,7 @@ func Test_methodPost(t *testing.T) {
 }
 
 func Test_methodPostApiShorten(t *testing.T) {
-	ml := mocklogger.GetInstance()
+	ml := mocklogger.New()
 	p := New(mockstor.New(), ml)
 	testCases := []struct {
 		name                string
@@ -138,7 +138,7 @@ func Test_methodPostApiShorten(t *testing.T) {
 	}
 }
 func Test_methodGetHandleFunc(t *testing.T) {
-	ml := mocklogger.GetInstance()
+	ml := mocklogger.New()
 	p := New(mockstor.New(), ml)
 	//conf.ParseFlags()
 	testCases := []struct {
