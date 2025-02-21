@@ -1,4 +1,4 @@
-package usecases
+package uselink
 
 import (
 	"github.com/d5kx/shorturl/internal/app/entities"

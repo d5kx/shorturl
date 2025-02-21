@@ -6,31 +6,29 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/http/models"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/models"
-	LinkCases "github.com/d5kx/shorturl/internal/app/usecases/link"
+	"github.com/d5kx/shorturl/internal/app/usecases/link"
 
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	db  LinkCases.LinkStorage
+	use *uselink.UseCases
 	log loggers.Logger
 }
 
-func New(storage LinkCases.LinkStorage, logger loggers.Logger) *Handler {
+func New(useCase *uselink.UseCases, logger loggers.Logger) *Handler {
 	return &Handler{
-		db:  storage,
+		use: useCase,
 		log: logger,
 	}
 }
 
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 	short := strings.TrimPrefix(req.URL.Path, "/")
-	u := LinkCases.New(h.db, h.log)
-	l, err := u.Get(short)
-	//l, err := h.db.Get(short)
+	l, err := h.use.Get(short)
 	if err != nil || l == nil {
 		h.log.Debug("can't process GET request",
 			zap.String("short", short),
@@ -58,10 +56,8 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	u := LinkCases.New(h.db, h.log)
-	sURL, err := u.Save(buf.String())
-	//var l = link.Link{OriginalURL: buf.String()}
-	//sURL, err := h.db.Save(&l)
+
+	sURL, err := h.use.Save(buf.String())
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
@@ -96,9 +92,8 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	u := LinkCases.New(h.db, h.log)
-	sURL, err := u.Save(request.URL)
 
+	sURL, err := h.use.Save(request.URL)
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
@@ -120,7 +115,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	}
 	_, err = res.Write(jsonByte)
 	if err != nil {
-		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
+		h.log.Debug("can't process POST request (can't write response JSON body)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}

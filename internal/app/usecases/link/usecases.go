@@ -1,4 +1,4 @@
-package usecases
+package uselink
 
 import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
@@ -20,36 +20,37 @@ func New(storage LinkStorage, logger loggers.Logger) *UseCases {
 	}
 }
 
-func (u *UseCases) Save(OriginalURL string) (string, error) {
-	var sURL string
+func (u *UseCases) Save(originalURL string) (string, error) {
+	var shortURL string
 	var err error
 
 	isExist := true
 	for isExist {
-		sURL = link.ShortURL()
-		isExist, err = u.db.IsExist(sURL)
+		shortURL = link.ShortURL()
+		isExist, err = u.db.IsExist(shortURL)
 		if err != nil {
-			u.logger.Debug("database error", zap.Error(err))
+			u.logger.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
 			return "", e.WrapError("database error", err)
 		}
 	}
-	var l = link.Link{
-		OriginalURL: OriginalURL,
-		ShortURL:    sURL,
-	}
 
+	var l = link.Link{
+		OriginalURL: originalURL,
+		ShortURL:    shortURL,
+	}
 	err = u.db.Save(&l)
+
 	if err != nil {
-		u.logger.Debug("database error", zap.Error(err))
+		u.logger.Debug("Save() database error", zap.Error(err))
 		return "", e.WrapError("database error", err)
 	}
-	return sURL, err
+	return l.ShortURL, err
 }
 
 func (u *UseCases) Get(shortURL string) (*link.Link, error) {
 	originalURL, err := u.db.Get(shortURL)
 	if err != nil {
-		u.logger.Debug("database error", zap.Error(err))
+		u.logger.Debug("Get() database error", zap.String("sURL", shortURL), zap.Error(err))
 		return nil, e.WrapError("database error", err)
 	}
 

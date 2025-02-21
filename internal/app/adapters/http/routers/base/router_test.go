@@ -2,6 +2,7 @@ package baserouter
 
 import (
 	"bytes"
+	"github.com/d5kx/shorturl/internal/app/adapters/handlers/base"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,13 +15,12 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/mock"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mock"
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/handlers/base"
 )
 
 func TestRouter(t *testing.T) {
 	conf.ParseFlags()
 	ml := mocklogger.New()
-	p := basehandler.New(mockstor.New(), ml)
+	p := basehandler.basehandler.New(mockstor.New(), ml)
 	f := New(p, ml)
 
 	ts := httptest.NewServer(f.Router)

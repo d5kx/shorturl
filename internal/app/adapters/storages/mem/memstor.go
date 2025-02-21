@@ -25,7 +25,7 @@ func (s *Storage) Save(l *link.Link) error {
 	return nil
 }
 
-func (s Storage) Get(shortURL string) (string, error) {
+func (s *Storage) Get(shortURL string) (string, error) {
 	value, ok := s.db[shortURL]
 	//для тестирование, потом удалить
 	time.Sleep(8 * time.Millisecond)
@@ -35,12 +35,12 @@ func (s Storage) Get(shortURL string) (string, error) {
 	return value, nil
 }
 
-func (s Storage) IsExist(shortURL string) (bool, error) {
+func (s *Storage) IsExist(shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil
 }
 
-func (s Storage) Remove(shortURL string) error {
+func (s *Storage) Remove(shortURL string) error {
 	delete(s.db, shortURL)
 	return nil
 }

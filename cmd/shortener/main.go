@@ -1,13 +1,14 @@
 package main
 
 import (
+	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/routers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/servers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/simple"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/zap"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mem"
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/handlers/base"
+	"github.com/d5kx/shorturl/internal/app/usecases/link"
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
@@ -26,8 +27,8 @@ func main() {
 	if err != nil {
 		sl.Fatal("can't run zap loggers", err)
 	}
-
-	p := basehandler.New(memstor.New(), zl)
+	u := uselink.New(memstor.New(), zl)
+	p := basehandler.New(u, zl)
 	f := baserouter.New(p, zl)
 
 	server := baseserver.New(f, zl)
