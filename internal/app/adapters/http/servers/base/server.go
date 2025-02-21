@@ -1,9 +1,9 @@
 package baseserver
 
 import (
+	"github.com/d5kx/shorturl/internal/app/adapters/http/routers"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/loggers"
-	"github.com/d5kx/shorturl/internal/app/routers"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"go.uber.org/zap"
 )
