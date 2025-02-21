@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/d5kx/shorturl/internal/app/adapters/storages/mem"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/loggers/simple"
 	"github.com/d5kx/shorturl/internal/app/loggers/zap"
 	"github.com/d5kx/shorturl/internal/app/routers/base"
 	"github.com/d5kx/shorturl/internal/app/servers/base"
-	"github.com/d5kx/shorturl/internal/app/storages/mem"
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"

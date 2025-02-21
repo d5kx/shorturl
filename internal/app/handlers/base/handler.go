@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/storages"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/link"
 	"github.com/d5kx/shorturl/internal/app/loggers"
 	"github.com/d5kx/shorturl/internal/app/models"
-	"github.com/d5kx/shorturl/internal/app/storages"
 
 	"go.uber.org/zap"
 )

@@ -9,8 +9,8 @@ import (
 
 	"github.com/d5kx/shorturl/internal/app/loggers/mock"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/storages/mock"
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/storages/mock"
 	"github.com/stretchr/testify/assert"
 )
 
