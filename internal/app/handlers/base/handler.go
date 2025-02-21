@@ -7,20 +7,19 @@ import (
 	"strings"
 
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
-	"github.com/d5kx/shorturl/internal/app/adapters/storages"
 	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/app/models"
+	LinkCases "github.com/d5kx/shorturl/internal/app/usecases/link"
 
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	db  storages.Storage
+	db  LinkCases.LinkStorage
 	log loggers.Logger
 }
 
-func New(storage storages.Storage, logger loggers.Logger) *Handler {
+func New(storage LinkCases.LinkStorage, logger loggers.Logger) *Handler {
 	return &Handler{
 		db:  storage,
 		log: logger,
@@ -29,9 +28,11 @@ func New(storage storages.Storage, logger loggers.Logger) *Handler {
 
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 	short := strings.TrimPrefix(req.URL.Path, "/")
-	l, err := h.db.Get(short)
+	u := LinkCases.New(h.db, h.log)
+	l, err := u.Get(short)
+	//l, err := h.db.Get(short)
 	if err != nil || l == nil {
-		h.log.Debug("can't process GET request (short link does not exist in the database)",
+		h.log.Debug("can't process GET request",
 			zap.String("short", short),
 			zap.Error(err),
 		)
@@ -57,11 +58,12 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	var l = link.Link{OriginalURL: buf.String()}
-	sURL, err := h.db.Save(&l)
+	u := LinkCases.New(h.db, h.log)
+	sURL, err := u.Save(buf.String())
+	//var l = link.Link{OriginalURL: buf.String()}
+	//sURL, err := h.db.Save(&l)
 	if err != nil {
-		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
+		h.log.Debug("can't process POST request (short link is not saved)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -94,9 +96,9 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	u := LinkCases.New(h.db, h.log)
+	sURL, err := u.Save(request.URL)
 
-	var l = link.Link{OriginalURL: request.URL}
-	sURL, err := h.db.Save(&l)
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)

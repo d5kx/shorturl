@@ -3,7 +3,7 @@ package mockstor
 import (
 	"errors"
 
-	"github.com/d5kx/shorturl/internal/app/link"
+	"github.com/d5kx/shorturl/internal/app/entities"
 )
 
 type Storage struct {
@@ -13,18 +13,18 @@ func New() *Storage {
 	return &Storage{}
 }
 
-func (s Storage) Save(l *link.Link) (string, error) {
+func (s Storage) Save(l *link.Link) error {
 	if l.OriginalURL == "db_error" {
-		return "", errors.New("db_error")
+		return errors.New("db_error")
 	}
-	return "AbCdEf", nil
+	return nil
 }
 
-func (s Storage) Get(shortURL string) (*link.Link, error) {
+func (s Storage) Get(shortURL string) (string, error) {
 	if shortURL == "AbCdEf" {
-		return &(link.Link{OriginalURL: "http://ya.ru"}), nil
+		return "http://ya.ru", nil
 	}
-	return nil, nil
+	return "", nil
 }
 
 func (s Storage) IsExist(shortURL string) (bool, error) {

@@ -11,7 +11,7 @@ import (
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
-// curl -v -X POST -H "Content-Type:application/json" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:8080/api/shorten"
+// curl -v -X POST -H "Content-Type:application/json" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:9090/api/shorten"
 // curl -v -X GET -H "Content-Type:text/plain" "http://localhost:8080/GlTBlr"
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\handlers\event-handlers\event-processor_test.go

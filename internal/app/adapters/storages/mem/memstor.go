@@ -4,47 +4,35 @@ import (
 	"time"
 
 	"github.com/d5kx/shorturl/internal/app/entities"
-	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Storage struct {
-	db map[string]link.Link
+	db map[string]string
+	//db map[string]link.Link
 }
 
-func (s Storage) GetDB() map[string]link.Link {
+func (s *Storage) GetDB() map[string]string {
 	return s.db
 }
 
 func New() *Storage {
-	return &Storage{db: make(map[string]link.Link)}
+	return &Storage{db: make(map[string]string)}
 }
 
-func (s Storage) Save(l *link.Link) (string, error) {
-	var sURL string
-	var err error
-	isExist := true
+func (s *Storage) Save(l *link.Link) error {
+	s.db[l.ShortURL] = l.OriginalURL
 
-	for isExist {
-		sURL = link.ShortURL()
-		isExist, err = s.IsExist(sURL)
-
-		if err != nil {
-			return "", e.WrapError("can't save link", err)
-		}
-	}
-	s.db[sURL] = *l
-
-	return sURL, nil
+	return nil
 }
 
-func (s Storage) Get(shortURL string) (*link.Link, error) {
+func (s Storage) Get(shortURL string) (string, error) {
 	value, ok := s.db[shortURL]
 	//для тестирование, потом удалить
 	time.Sleep(8 * time.Millisecond)
 	if !ok {
-		return nil, nil
+		return "", nil
 	}
-	return &value, nil
+	return value, nil
 }
 
 func (s Storage) IsExist(shortURL string) (bool, error) {
