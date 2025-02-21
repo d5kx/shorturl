@@ -3,7 +3,7 @@ package memstor
 import (
 	"time"
 
-	"github.com/d5kx/shorturl/internal/app/link"
+	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/util/e"
 )
 

@@ -3,9 +3,9 @@ package baserouter
 import (
 	"net/http"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/handlers"
-	"github.com/d5kx/shorturl/internal/app/loggers"
 	"github.com/d5kx/shorturl/internal/util/e"
 
 	"github.com/go-chi/chi/v5"

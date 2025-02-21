@@ -1,7 +1,7 @@
 package storages
 
 import (
-	"github.com/d5kx/shorturl/internal/app/link"
+	"github.com/d5kx/shorturl/internal/app/entities"
 )
 
 type Storage interface {
