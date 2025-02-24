@@ -10,6 +10,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/mock"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mock"
 	"github.com/d5kx/shorturl/internal/app/conf"
+	"github.com/d5kx/shorturl/internal/app/usecases/link"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +19,8 @@ import (
 func Test_methodPost(t *testing.T) {
 	conf.ParseFlags()
 	ml := mocklogger.New()
-	p := New(mockstor.New(), ml)
+	u := uselink.New(mockstor.New(), ml)
+	p := New(u, ml)
 
 	testCases := []struct {
 		name                string
@@ -94,7 +96,8 @@ func Test_methodPost(t *testing.T) {
 
 func Test_methodPostApiShorten(t *testing.T) {
 	ml := mocklogger.New()
-	p := New(mockstor.New(), ml)
+	u := uselink.New(mockstor.New(), ml)
+	p := New(u, ml)
 	testCases := []struct {
 		name                string
 		path                string
@@ -138,8 +141,8 @@ func Test_methodPostApiShorten(t *testing.T) {
 }
 func Test_methodGetHandleFunc(t *testing.T) {
 	ml := mocklogger.New()
-	p := New(mockstor.New(), ml)
-	//conf.ParseFlags()
+	u := uselink.New(mockstor.New(), ml)
+	p := New(u, ml)
 	testCases := []struct {
 		name             string
 		path             string

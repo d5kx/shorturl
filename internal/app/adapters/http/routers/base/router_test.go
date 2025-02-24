@@ -8,20 +8,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/d5kx/shorturl/internal/app/adapters/handlers/base"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/mock"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mock"
 	"github.com/d5kx/shorturl/internal/app/conf"
+	"github.com/d5kx/shorturl/internal/app/usecases/link"
 )
 
 func TestRouter(t *testing.T) {
 	conf.ParseFlags()
 	ml := mocklogger.New()
-	p := basehandler.basehandler.New(mockstor.New(), ml)
+	u := uselink.New(mockstor.New(), ml)
+	p := basehandler.New(u, ml)
 	f := New(p, ml)
 
 	ts := httptest.NewServer(f.Router)
