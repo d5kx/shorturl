@@ -2,12 +2,13 @@ package baserouter
 
 import (
 	"bytes"
-	"github.com/d5kx/shorturl/internal/app/adapters/handlers/base"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/d5kx/shorturl/internal/app/adapters/handlers/base"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
