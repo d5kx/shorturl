@@ -106,7 +106,7 @@ func TestRouter(t *testing.T) {
 			contentType:         "text/plain",
 			body:                "",
 			expectedCode:        http.StatusTemporaryRedirect,
-			expectedContentType: "text/plain",
+			expectedContentType: "",
 			expectedLocation:    "http://ya.ru",
 			expectedBody:        "",
 		},

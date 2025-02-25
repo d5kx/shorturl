@@ -1,9 +1,10 @@
 package zaplogger
 
 import (
-	"github.com/d5kx/shorturl/internal/app/conf"
 	"net/http"
 	"time"
+
+	"github.com/d5kx/shorturl/internal/app/conf"
 
 	"github.com/d5kx/shorturl/internal/util/e"
 
@@ -55,13 +56,13 @@ func (z *ZapLogger) init(level string) error {
 	return nil
 }
 
-func (z *ZapLogger) RequestLogging(h http.HandlerFunc) http.HandlerFunc {
+func (z *ZapLogger) RequestLogging(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		responseData := responseData{status: 0, size: 0}
 		lw := logResponseWriter{ResponseWriter: w, responseData: &responseData}
-		h(&lw, r)
+		next.ServeHTTP(&lw, r)
 
 		duration := time.Since(start)
 		z.zap.Info("got incoming HTTP request",
