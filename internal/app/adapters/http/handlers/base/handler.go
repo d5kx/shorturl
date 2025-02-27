@@ -35,6 +35,7 @@ func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 			zap.Error(err),
 		)
 		res.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -43,7 +44,7 @@ func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
-	if !h.checkContentType(req, "text/plain") {
+	if !h.checkContentType(req, "text/plain") && !h.checkContentType(req, "application/x-gzip") {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}

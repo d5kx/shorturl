@@ -2,6 +2,7 @@ package baserouter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/compress/gzip"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/mock"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mock"
@@ -22,8 +24,9 @@ func TestRouter(t *testing.T) {
 	conf.ParseFlags()
 	ml := mocklogger.New()
 	u := uselink.New(mockstor.New(), ml)
+	c := gzipc.New(ml)
 	p := basehandler.New(u, ml)
-	f := New(p, ml)
+	f := New(p, c, ml)
 
 	ts := httptest.NewServer(f.Router)
 	defer ts.Close()
@@ -100,13 +103,23 @@ func TestRouter(t *testing.T) {
 			expectedBody:        `{"result":"` + conf.GetResURLAdr() + `/AbCdEf"` + `}`,
 		},
 		{
+			name:                "POST: api/json valid compressed request",
+			path:                "/api/shorten",
+			method:              http.MethodPost,
+			contentType:         "application/json",
+			body:                `{"url":"https://practicum.yandex.ru"}`,
+			expectedCode:        http.StatusCreated,
+			expectedContentType: "application/json",
+			expectedBody:        `{"result":"` + conf.GetResURLAdr() + `/AbCdEf"` + `}`,
+		},
+		{
 			name:                "GET: valid request",
 			method:              http.MethodGet,
 			path:                "/AbCdEf",
 			contentType:         "text/plain",
 			body:                "",
 			expectedCode:        http.StatusTemporaryRedirect,
-			expectedContentType: "text/plain",
+			expectedContentType: "",
 			expectedLocation:    "http://ya.ru",
 			expectedBody:        "",
 		},
@@ -133,19 +146,47 @@ func TestRouter(t *testing.T) {
 	}
 	for _, tc := range testTable {
 		t.Run(tc.name, func(t *testing.T) {
-			body := bytes.NewBuffer([]byte(tc.body))
+			var body *bytes.Buffer
+
+			switch tc.name {
+			case "POST: api/json valid compressed request":
+				body = bytes.NewBuffer(nil)
+				zb := gzip.NewWriter(body)
+				_, err := zb.Write([]byte(tc.body))
+				require.NoError(t, err)
+				err = zb.Close()
+				require.NoError(t, err)
+			default:
+				body = bytes.NewBuffer([]byte(tc.body))
+			}
+
 			req, err := http.NewRequest(tc.method, ts.URL+tc.path, body)
 			require.NoError(t, err)
 
 			req.Header.Set("Content-Type", tc.contentType)
+			if tc.name == "POST: api/json valid compressed request" {
+				req.Header.Set("Content-Encoding", "gzip")
+				req.Header.Set("Accept-Encoding", "gzip")
+			}
 
 			ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
 			resp, err := ts.Client().Do(req)
 			require.NoError(t, err)
 			defer resp.Body.Close()
 
-			respBody, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
+			var respBody []byte
+
+			switch tc.name {
+			case "POST: api/json valid compressed request":
+				zr, err := gzip.NewReader(resp.Body)
+				require.NoError(t, err)
+
+				respBody, err = io.ReadAll(zr)
+				require.NoError(t, err)
+			default:
+				respBody, err = io.ReadAll(resp.Body)
+				require.NoError(t, err)
+			}
 
 			var sb strings.Builder
 			sb.Write(respBody)
