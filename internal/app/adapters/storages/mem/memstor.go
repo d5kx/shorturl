@@ -3,16 +3,18 @@ package memstor
 import (
 	"bufio"
 	"encoding/json"
+	"math/rand"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/entities"
+	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Storage struct {
 	db map[string]string
-	i  int
 	//db map[string]link.Link
 }
 
@@ -52,10 +54,9 @@ func (s *Storage) Remove(shortURL string) error {
 }
 
 func (s *Storage) SaveToFile(l *link.Link) error {
-
 	file, err := os.OpenFile(conf.GetDBFileName(), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return err
+		return e.WrapError("can't open file "+conf.GetDBFileName(), err)
 	}
 	writer := bufio.NewWriter(file)
 	defer func() {
@@ -67,24 +68,20 @@ func (s *Storage) SaveToFile(l *link.Link) error {
 		}
 	}()
 
-	s.i++
-	l.Uid = strconv.Itoa(s.i)
+	rand.NewSource(time.Now().UnixNano())
+	l.Uid = strconv.Itoa(rand.Intn(999999))
 
-	data, err := json.Marshal(l)
-	if err != nil {
-		return err
+	if err = json.NewEncoder(writer).Encode(l); err != nil {
+		return e.WrapError("can't encode json when saving to file", err)
 	}
-	data = append(data, '\n')
 
-	_, err = writer.Write(data)
-
-	return err
+	return nil
 }
 
 func (s *Storage) LoadFromFile() error {
 	file, err := os.OpenFile(conf.GetDBFileName(), os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return err
+		return e.WrapError("can't open file "+conf.GetDBFileName(), err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
@@ -95,11 +92,10 @@ func (s *Storage) LoadFromFile() error {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		data := scanner.Bytes()
-
 		l := link.Link{}
 		err = json.Unmarshal(data, &l)
 		if err != nil {
-			return err
+			return e.WrapError("can't decode json when reading from file", err)
 		}
 
 		s.db[l.ShortURL] = l.OriginalURL
