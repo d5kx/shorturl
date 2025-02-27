@@ -29,7 +29,14 @@ func main() {
 	if err != nil {
 		sl.Fatal("can't run zap loggers", err)
 	}
-	u := uselink.New(memstor.New(), zl)
+
+	m := memstor.New()
+	err = m.LoadFromFile()
+	if err != nil {
+		sl.Fatal("can't load DB from file", err)
+	}
+
+	u := uselink.New(m, zl)
 	c := gzipc.New(zl)
 	p := basehandler.New(u, zl)
 	f := baserouter.New(p, c, zl)
@@ -38,4 +45,5 @@ func main() {
 	if err := server.Run(); err != nil {
 		sl.Fatal("can't run service", err)
 	}
+
 }

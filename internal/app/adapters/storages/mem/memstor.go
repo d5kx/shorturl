@@ -1,13 +1,18 @@
 package memstor
 
 import (
-	"time"
+	"bufio"
+	"encoding/json"
+	"os"
+	"strconv"
 
+	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/entities"
 )
 
 type Storage struct {
 	db map[string]string
+	i  int
 	//db map[string]link.Link
 }
 
@@ -21,14 +26,15 @@ func New() *Storage {
 
 func (s *Storage) Save(l *link.Link) error {
 	s.db[l.ShortURL] = l.OriginalURL
-
-	return nil
+	if conf.GetDBFileName() == "" {
+		return nil
+	}
+	return s.SaveToFile(l)
 }
 
 func (s *Storage) Get(shortURL string) (string, error) {
 	value, ok := s.db[shortURL]
-	//для тестирование, потом удалить
-	time.Sleep(8 * time.Millisecond)
+
 	if !ok {
 		return "", nil
 	}
@@ -42,5 +48,66 @@ func (s *Storage) IsExist(shortURL string) (bool, error) {
 
 func (s *Storage) Remove(shortURL string) error {
 	delete(s.db, shortURL)
+	return nil
+}
+
+func (s *Storage) SaveToFile(l *link.Link) error {
+
+	file, err := os.OpenFile(conf.GetDBFileName(), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(file)
+	defer func() {
+		if err := writer.Flush(); err != nil {
+			//добавить запись в лог
+		}
+		if err := file.Close(); err != nil {
+			//добавить запись в лог
+		}
+	}()
+
+	s.i++
+	l.Uid = strconv.Itoa(s.i)
+
+	data, err := json.Marshal(l)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	_, err = writer.Write(data)
+
+	return err
+}
+
+func (s *Storage) LoadFromFile() error {
+	file, err := os.OpenFile(conf.GetDBFileName(), os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			//добавить запись в лог
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		data := scanner.Bytes()
+
+		l := link.Link{}
+		err = json.Unmarshal(data, &l)
+		if err != nil {
+			return err
+		}
+
+		s.db[l.ShortURL] = l.OriginalURL
+	}
+
+	if err := scanner.Err(); err != nil {
+		//добавить запись в лог
+	}
+
 	return nil
 }
