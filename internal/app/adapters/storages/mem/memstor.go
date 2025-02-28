@@ -69,7 +69,7 @@ func (s *Storage) SaveToFile(l *link.Link) error {
 	}()
 
 	rand.NewSource(time.Now().UnixNano())
-	l.Uid = strconv.Itoa(rand.Intn(999999))
+	l.UID = strconv.Itoa(rand.Intn(999999))
 
 	if err = json.NewEncoder(writer).Encode(l); err != nil {
 		return e.WrapError("can't encode json when saving to file", err)
