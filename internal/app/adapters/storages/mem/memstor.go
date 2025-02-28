@@ -8,22 +8,26 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/util/e"
 )
 
 type Storage struct {
-	db map[string]string
-	//db map[string]link.Link
+	db  map[string]string
+	log loggers.Logger
 }
 
 func (s *Storage) GetDB() map[string]string {
 	return s.db
 }
 
-func New() *Storage {
-	return &Storage{db: make(map[string]string)}
+func New(logger loggers.Logger) *Storage {
+	return &Storage{
+		db:  make(map[string]string),
+		log: logger,
+	}
 }
 
 func (s *Storage) Save(l *link.Link) error {
@@ -61,10 +65,10 @@ func (s *Storage) SaveToFile(l *link.Link) error {
 	writer := bufio.NewWriter(file)
 	defer func() {
 		if err := writer.Flush(); err != nil {
-			//добавить запись в лог
+			s.log.Fatal("error in Flush() when saving to file", err)
 		}
 		if err := file.Close(); err != nil {
-			//добавить запись в лог
+			s.log.Fatal("file closing error when saving to file", err)
 		}
 	}()
 
@@ -85,7 +89,7 @@ func (s *Storage) LoadFromFile() error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			//добавить запись в лог
+			s.log.Fatal("file closing error when load from file", err)
 		}
 	}()
 
@@ -102,7 +106,7 @@ func (s *Storage) LoadFromFile() error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		//добавить запись в лог
+		s.log.Fatal("file scanning error when loaf from file", err)
 	}
 
 	return nil

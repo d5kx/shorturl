@@ -30,7 +30,7 @@ func main() {
 		sl.Fatal("can't run zap loggers", err)
 	}
 
-	m := memstor.New()
+	m := memstor.New(zl)
 	err = m.LoadFromFile()
 	if err != nil {
 		sl.Fatal("can't load DB from file", err)
