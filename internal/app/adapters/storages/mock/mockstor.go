@@ -35,3 +35,7 @@ func (s *Storage) IsExist(shortURL string) (bool, error) {
 func (s *Storage) Remove(shortURL string) error {
 	return nil
 }
+
+func (s *Storage) SaveToFile(filename string) error {
+	return nil
+}

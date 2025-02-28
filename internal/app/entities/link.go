@@ -20,8 +20,9 @@ var symbolDictionary = []byte{
 }
 
 type Link struct {
-	OriginalURL string
-	ShortURL    string
+	UID         string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func ShortURL() string {
