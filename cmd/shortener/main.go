@@ -10,6 +10,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mem"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/usecases/link"
+	"github.com/d5kx/shorturl/internal/util/generators/basegen"
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -H -d "http://ya.ru" "http://localhost:8080"
@@ -18,6 +19,7 @@ import (
 // curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/GlTBlr"
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\handlers\event-handlers\event-processor_test.go
+// mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases/link LinkStorage
 func init() {
 	conf.ParseFlags()
 }
@@ -36,7 +38,7 @@ func main() {
 		sl.Fatal("can't load DB from file", err)
 	}
 
-	u := uselink.New(m, zl)
+	u := uselink.New(m, basegen.New(), zl)
 	c := gzipc.New(zl)
 	p := basehandler.New(u, zl)
 	f := baserouter.New(p, c, zl)

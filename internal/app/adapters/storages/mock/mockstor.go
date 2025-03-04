@@ -17,7 +17,6 @@ func (s *Storage) Save(l *link.Link) error {
 	if l.OriginalURL == "db_error" {
 		return errors.New("db_error")
 	}
-	l.ShortURL = "AbCdEf"
 	return nil
 }
 

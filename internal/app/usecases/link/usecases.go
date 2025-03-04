@@ -4,6 +4,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/util/e"
+	"github.com/d5kx/shorturl/internal/util/generators"
 
 	"go.uber.org/zap"
 )
@@ -11,12 +12,14 @@ import (
 type UseCases struct {
 	db     LinkStorage
 	logger loggers.Logger
+	gen    generators.Generator
 }
 
-func New(storage LinkStorage, logger loggers.Logger) *UseCases {
+func New(storage LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
 	return &UseCases{
 		db:     storage,
 		logger: logger,
+		gen:    generator,
 	}
 }
 
@@ -26,7 +29,7 @@ func (u *UseCases) Save(originalURL string) (string, error) {
 
 	isExist := true
 	for isExist {
-		shortURL = link.ShortURL()
+		shortURL = u.gen.ShortURL()
 		isExist, err = u.db.IsExist(shortURL)
 		if err != nil {
 			u.logger.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))

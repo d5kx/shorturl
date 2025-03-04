@@ -19,7 +19,7 @@ func ParseFlags() {
 	flag.StringVar(&cnf.flagServerAddress, "a", "localhost:8080", "address and port to start the HTTP servers")
 	flag.StringVar(&cnf.flagResponseURLAddress, "b", "http://localhost:8080", "base address of the resulting shortened URL")
 	flag.StringVar(&cnf.flagLoggerLevel, "l", "info", "loggers level")
-	flag.StringVar(&cnf.flagDBFileName, "f", "/tmp/short-url-db.json", "full file name to save DB")
+	flag.StringVar(&cnf.flagDBFileName, "f", "tmp/short-url-db.json", "full file name to save DB")
 
 	flag.Parse()
 
