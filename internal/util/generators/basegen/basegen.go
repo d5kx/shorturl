@@ -2,6 +2,7 @@ package basegen
 
 import (
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,7 +14,7 @@ const (
 	shorURLLength = 6
 )
 
-var symbolDictionary = []byte{
+var symbolsDictionary = []byte{
 	'A', 'b', 'C', 'd', 'E', 'f', 'G', 'h', 'I', 'j',
 	'a', 'B', 'c', 'D', 'e', 'F', 'g', 'H', 'i', 'J',
 	'K', 'l', 'M', 'n', 'O', 'p', 'Q', 'r', 'S', 't',
@@ -33,8 +34,14 @@ func (g *Gen) ShortURL() string {
 	ln := len(symbolDictionary)
 
 	for i := 0; i < shorURLLength; i++ {
-		b.WriteByte(symbolDictionary[rand.Intn(ln)])
+		b.WriteByte(symbolsDictionary[rand.Intn(ln)])
 	}
 
 	return b.String()
+}
+
+func (g *Gen) UID() string {
+	rand.NewSource(time.Now().UnixNano())
+	return strconv.Itoa(rand.Intn(99999999))
+
 }

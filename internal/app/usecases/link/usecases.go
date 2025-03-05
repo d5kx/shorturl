@@ -38,6 +38,7 @@ func (u *UseCases) Save(originalURL string) (string, error) {
 	}
 
 	var l = link.Link{
+		UID:         u.gen.UID(),
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
 	}

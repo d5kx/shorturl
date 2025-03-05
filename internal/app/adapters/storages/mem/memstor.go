@@ -3,10 +3,7 @@ package memstor
 import (
 	"bufio"
 	"encoding/json"
-	"math/rand"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/conf"
@@ -71,9 +68,6 @@ func (s *Storage) SaveToFile(l *link.Link) error {
 			s.log.Fatal("file closing error when saving to file", err)
 		}
 	}()
-
-	rand.NewSource(time.Now().UnixNano())
-	l.UID = strconv.Itoa(rand.Intn(999999))
 
 	if err = json.NewEncoder(writer).Encode(l); err != nil {
 		return e.WrapError("can't encode json when saving to file", err)
