@@ -20,11 +20,14 @@ import (
 // curl -v -X POST -H "Content-Type:application/json"  -H "Accept-Encoding:gzip" --output "-" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:9090/api/shorten"
 // curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/GlTBlr"
 // curl -v -X GET "http://localhost:8080/ping"
+
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\handlers\event-handlers\event-processor_test.go
 
 // go install github.com/golang/mock/mockgen@latest
 // mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases/link LinkStorage
+
+// go run main.go -l debug -f tmp/short-url-db.json
 func init() {
 	conf.ParseFlags()
 }
@@ -38,9 +41,12 @@ func main() {
 	}
 
 	postg := postgre.New(zl)
-	postg.Connect(conf.GetPostgreSQLConnectionString())
+	err = postg.Connect(conf.GetPostgreSQLConnectionString())
+	if err != nil {
+		sl.Info("can't connect to PostgreSQL db", err)
+	}
 	defer postg.Close()
-	postg.Ping()
+
 	postgUse := usedb.New(postg)
 
 	m := memstor.New(zl)

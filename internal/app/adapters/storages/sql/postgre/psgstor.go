@@ -47,10 +47,10 @@ func (s *Storage) Ping() bool {
 	defer cancel()
 
 	if err := s.db.PingContext(ctx); err != nil {
-		s.log.Debug("DB ping - ERROR!", zap.Error(err))
+		s.log.Debug("DB ping: error", zap.Error(err))
 		return false
 	}
-	s.log.Debug("DB ping - OK!")
+	s.log.Debug("DB ping: ok")
 	return true
 }
 
