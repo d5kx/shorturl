@@ -9,4 +9,5 @@ type Handler interface {
 	Post(res http.ResponseWriter, req *http.Request)
 	PostAPIShorten(res http.ResponseWriter, req *http.Request)
 	BadRequest(res http.ResponseWriter, req *http.Request)
+	PingDB(res http.ResponseWriter, req *http.Request)
 }

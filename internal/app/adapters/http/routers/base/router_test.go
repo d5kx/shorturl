@@ -3,6 +3,7 @@ package baserouter
 import (
 	"bytes"
 	"compress/gzip"
+	usedb "github.com/d5kx/shorturl/internal/app/usecases/db"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -34,6 +35,7 @@ func TestRouter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	s := gomockstor.NewMockLinkStorage(ctrl)
+	ping := gomockstor.NewMockDB(ctrl)
 
 	s.EXPECT().Get("AbCdEf").Return("http://ya.ru", nil)
 	s.EXPECT().Get(gomock.Any()).Return("", nil)
@@ -44,9 +46,14 @@ func TestRouter(t *testing.T) {
 	s.EXPECT().Save(gomock.Any()).Return(nil)
 	s.EXPECT().Save(gomock.Any()).AnyTimes()
 
+	ping.EXPECT().Ping().Return(true)
+	ping.EXPECT().Ping().AnyTimes()
+
+	postUse := usedb.New(ping)
+
 	u := uselink.New(s /*mockstor.New()*/, mockgen.New(), ml)
 	c := gzipc.New(ml)
-	p := basehandler.New(u, ml)
+	p := basehandler.New(u, postUse, ml)
 	f := New(p, c, ml)
 
 	ts := httptest.NewServer(f.Router)
@@ -161,6 +168,16 @@ func TestRouter(t *testing.T) {
 			contentType:      "text/plain",
 			body:             "",
 			expectedCode:     http.StatusBadRequest,
+			expectedLocation: "",
+			expectedBody:     "",
+		},
+		{
+			name:             "GET: ping",
+			path:             "/ping",
+			method:           http.MethodGet,
+			contentType:      "",
+			body:             "",
+			expectedCode:     http.StatusOK,
 			expectedLocation: "",
 			expectedBody:     "",
 		},

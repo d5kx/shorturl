@@ -3,6 +3,8 @@ package basehandler
 import (
 	"bytes"
 	"encoding/json"
+	usedb "github.com/d5kx/shorturl/internal/app/usecases/db"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"net/http"
 	"strings"
 
@@ -15,20 +17,22 @@ import (
 )
 
 type Handler struct {
-	use *uselink.UseCases
-	log loggers.Logger
+	linkUse *uselink.UseCases
+	dbUse   *usedb.UseCases
+	log     loggers.Logger
 }
 
-func New(useCase *uselink.UseCases, logger loggers.Logger) *Handler {
+func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger) *Handler {
 	return &Handler{
-		use: useCase,
-		log: logger,
+		linkUse: useCase,
+		log:     logger,
+		dbUse:   dbUse,
 	}
 }
 
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 	short := strings.TrimPrefix(req.URL.Path, "/")
-	l, err := h.use.Get(short)
+	l, err := h.linkUse.Get(short)
 	if err != nil || l == nil {
 		h.log.Debug("can't process GET request",
 			zap.String("short", short),
@@ -58,7 +62,7 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sURL, err := h.use.Save(buf.String())
+	sURL, err := h.linkUse.Save(buf.String())
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
@@ -94,7 +98,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sURL, err := h.use.Save(request.URL)
+	sURL, err := h.linkUse.Save(request.URL)
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
@@ -127,6 +131,14 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}*/
+}
+
+func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
+	if h.dbUse.Ping() {
+		res.WriteHeader(http.StatusOK)
+		return
+	}
+	res.WriteHeader(http.StatusInternalServerError)
 }
 
 func (h *Handler) BadRequest(res http.ResponseWriter, req *http.Request) {

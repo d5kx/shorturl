@@ -31,7 +31,7 @@ func (g *Gen) ShortURL() string {
 	var b strings.Builder
 
 	rand.NewSource(time.Now().UnixNano())
-	ln := len(symbolDictionary)
+	ln := len(symbolsDictionary)
 
 	for i := 0; i < shorURLLength; i++ {
 		b.WriteByte(symbolsDictionary[rand.Intn(ln)])

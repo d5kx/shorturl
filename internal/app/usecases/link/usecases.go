@@ -3,6 +3,7 @@ package uselink
 import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/entities"
+	"github.com/d5kx/shorturl/internal/app/usecases"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"github.com/d5kx/shorturl/internal/util/generators"
 
@@ -10,12 +11,12 @@ import (
 )
 
 type UseCases struct {
-	db     LinkStorage
+	db     usecases.LinkStorage
 	logger loggers.Logger
 	gen    generators.Generator
 }
 
-func New(storage LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
+func New(storage usecases.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
 	return &UseCases{
 		db:     storage,
 		logger: logger,

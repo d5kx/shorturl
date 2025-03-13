@@ -29,6 +29,7 @@ func New(processor handlers.Handler, compressor compress.Compressor, logger logg
 	r.Router = chi.NewRouter()
 	r.Router.Post(`/`, r.log.RequestLogging(r.comp.RequestCompress(r.proc.Post)))
 	r.Router.Post(`/api/shorten`, r.log.RequestLogging(r.comp.RequestCompress(r.proc.PostAPIShorten)))
+	r.Router.Get(`/ping`, r.log.RequestLogging(r.proc.PingDB))
 	r.Router.Get(`/{id}`, r.log.RequestLogging(r.comp.RequestCompress(r.proc.Get)))
 	r.Router.NotFound(r.log.RequestLogging(r.comp.RequestCompress(r.proc.BadRequest)))
 	r.Router.MethodNotAllowed(r.log.RequestLogging(r.comp.RequestCompress(r.proc.BadRequest)))

@@ -16,6 +16,6 @@ func (g *Gen) ShortURL() string {
 }
 
 func (g *Gen) UID() string {
-	return strconv.Itoa(rand.Intn(23456789))
+	return strconv.Itoa(23456789)
 
 }

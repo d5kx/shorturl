@@ -1,4 +1,4 @@
-package uselink
+package usecases
 
 import (
 	"github.com/d5kx/shorturl/internal/app/entities"
@@ -9,4 +9,8 @@ type LinkStorage interface {
 	Get(shortURL string) (string, error)
 	IsExist(shortURL string) (bool, error)
 	Remove(shortURL string) error
+}
+
+type DB interface {
+	Ping() bool
 }
