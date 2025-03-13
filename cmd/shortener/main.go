@@ -28,6 +28,7 @@ import (
 // mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases/link LinkStorage
 
 // go run main.go -l debug -f tmp/short-url-db.json
+
 func init() {
 	conf.ParseFlags()
 }
