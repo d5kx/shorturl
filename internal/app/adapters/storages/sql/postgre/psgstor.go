@@ -42,11 +42,11 @@ func (s *Storage) Close() error {
 	return nil
 }
 
-func (s *Storage) Ping() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+func (s *Storage) Ping(ctx context.Context) bool {
+	cntx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	if err := s.db.PingContext(ctx); err != nil {
+	if err := s.db.PingContext(cntx); err != nil {
 		s.log.Debug("DB ping: error", zap.Error(err))
 		return false
 	}
@@ -54,18 +54,48 @@ func (s *Storage) Ping() bool {
 	return true
 }
 
-func (s *Storage) Save(l *link.Link) error {
+func (s *Storage) Bootstrap(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		s.log.Debug("unable to start SQL transaction", zap.Error(err))
+		return e.WrapError("unable to start SQL transaction", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE public.links (
+			uuid text NOT NULL,
+			short_url text NOT NULL,
+			original_url text NOT NULL,
+			PRIMARY KEY (uuid)
+		)
+	`)
+
+	if err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			s.log.Debug("unable to rollback transaction", zap.Error(err))
+		}
+		s.log.Debug("unable to execute SQL transaction", zap.Error(err))
+		return e.WrapError("unable to execute SQL transaction", err)
+	}
+	/*
+		ALTER TABLE IF EXISTS public.links
+		OWNER to postgres;
+	*/
+	return tx.Commit()
+}
+
+func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return nil
 }
 
-func (s *Storage) Get(shortURL string) (string, error) {
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
 	return "", nil
 }
 
-func (s *Storage) IsExist(shortURL string) (bool, error) {
+func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	return false, nil
 }
 
-func (s *Storage) Remove(shortURL string) error {
+func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }

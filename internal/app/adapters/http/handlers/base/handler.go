@@ -32,7 +32,7 @@ func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger
 
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 	short := strings.TrimPrefix(req.URL.Path, "/")
-	l, err := h.linkUse.Get(short)
+	l, err := h.linkUse.Get(req.Context(), short)
 	if err != nil || l == nil {
 		h.log.Debug("can't process GET request",
 			zap.String("short", short),
@@ -62,7 +62,7 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sURL, err := h.linkUse.Save(buf.String())
+	sURL, err := h.linkUse.Save(req.Context(), buf.String())
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
@@ -98,7 +98,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sURL, err := h.linkUse.Save(request.URL)
+	sURL, err := h.linkUse.Save(req.Context(), request.URL)
 	if err != nil {
 		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
@@ -134,7 +134,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
-	if h.dbUse.Ping() {
+	if h.dbUse.Ping(req.Context()) {
 		res.WriteHeader(http.StatusOK)
 		return
 	}

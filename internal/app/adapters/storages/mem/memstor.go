@@ -2,6 +2,7 @@ package memstor
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"os"
 
@@ -27,7 +28,7 @@ func New(logger loggers.Logger) *Storage {
 	}
 }
 
-func (s *Storage) Save(l *link.Link) error {
+func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	s.db[l.ShortURL] = l.OriginalURL
 	if conf.GetDBFileName() == "" {
 		return nil
@@ -35,7 +36,7 @@ func (s *Storage) Save(l *link.Link) error {
 	return s.SaveToFile(l)
 }
 
-func (s *Storage) Get(shortURL string) (string, error) {
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
 	value, ok := s.db[shortURL]
 
 	if !ok {
@@ -44,12 +45,12 @@ func (s *Storage) Get(shortURL string) (string, error) {
 	return value, nil
 }
 
-func (s *Storage) IsExist(shortURL string) (bool, error) {
+func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil
 }
 
-func (s *Storage) Remove(shortURL string) error {
+func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	delete(s.db, shortURL)
 	return nil
 }

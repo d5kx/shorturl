@@ -37,17 +37,17 @@ func TestRouter(t *testing.T) {
 	s := gomockstor.NewMockLinkStorage(ctrl)
 	ping := gomockstor.NewMockDB(ctrl)
 
-	s.EXPECT().Get("AbCdEf").Return("http://ya.ru", nil)
-	s.EXPECT().Get(gomock.Any()).Return("", nil)
+	s.EXPECT().Get(gomock.Any(), "AbCdEf").Return("http://ya.ru", nil)
+	s.EXPECT().Get(gomock.Any(), gomock.Any()).Return("", nil)
 
-	s.EXPECT().IsExist(gomock.Any()).Return(false, nil)
-	s.EXPECT().IsExist(gomock.Any()).AnyTimes()
+	s.EXPECT().IsExist(gomock.Any(), gomock.Any()).Return(false, nil)
+	s.EXPECT().IsExist(gomock.Any(), gomock.Any()).AnyTimes()
 
-	s.EXPECT().Save(gomock.Any()).Return(nil)
-	s.EXPECT().Save(gomock.Any()).AnyTimes()
+	s.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+	s.EXPECT().Save(gomock.Any(), gomock.Any()).AnyTimes()
 
-	ping.EXPECT().Ping().Return(true)
-	ping.EXPECT().Ping().AnyTimes()
+	ping.EXPECT().Ping(gomock.Any()).Return(true)
+	ping.EXPECT().Ping(gomock.Any()).AnyTimes()
 
 	postUse := usedb.New(ping)
 

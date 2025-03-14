@@ -5,6 +5,7 @@
 package gomockstor
 
 import (
+	context "context"
 	reflect "reflect"
 
 	link "github.com/d5kx/shorturl/internal/app/entities"
@@ -35,61 +36,61 @@ func (m *MockLinkStorage) EXPECT() *MockLinkStorageMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockLinkStorage) Get(arg0 string) (string, error) {
+func (m *MockLinkStorage) Get(arg0 context.Context, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockLinkStorageMockRecorder) Get(arg0 interface{}) *gomock.Call {
+func (mr *MockLinkStorageMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockLinkStorage)(nil).Get), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockLinkStorage)(nil).Get), arg0, arg1)
 }
 
 // IsExist mocks base method.
-func (m *MockLinkStorage) IsExist(arg0 string) (bool, error) {
+func (m *MockLinkStorage) IsExist(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsExist", arg0)
+	ret := m.ctrl.Call(m, "IsExist", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // IsExist indicates an expected call of IsExist.
-func (mr *MockLinkStorageMockRecorder) IsExist(arg0 interface{}) *gomock.Call {
+func (mr *MockLinkStorageMockRecorder) IsExist(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsExist", reflect.TypeOf((*MockLinkStorage)(nil).IsExist), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsExist", reflect.TypeOf((*MockLinkStorage)(nil).IsExist), arg0, arg1)
 }
 
 // Remove mocks base method.
-func (m *MockLinkStorage) Remove(arg0 string) error {
+func (m *MockLinkStorage) Remove(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Remove", arg0)
+	ret := m.ctrl.Call(m, "Remove", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Remove indicates an expected call of Remove.
-func (mr *MockLinkStorageMockRecorder) Remove(arg0 interface{}) *gomock.Call {
+func (mr *MockLinkStorageMockRecorder) Remove(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockLinkStorage)(nil).Remove), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockLinkStorage)(nil).Remove), arg0, arg1)
 }
 
 // Save mocks base method.
-func (m *MockLinkStorage) Save(arg0 *link.Link) error {
+func (m *MockLinkStorage) Save(arg0 context.Context, arg1 *link.Link) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", arg0)
+	ret := m.ctrl.Call(m, "Save", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockLinkStorageMockRecorder) Save(arg0 interface{}) *gomock.Call {
+func (mr *MockLinkStorageMockRecorder) Save(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockLinkStorage)(nil).Save), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockLinkStorage)(nil).Save), arg0, arg1)
 }
 
 // MockDB is a mock of DB interface.
@@ -116,15 +117,15 @@ func (m *MockDB) EXPECT() *MockDBMockRecorder {
 }
 
 // Ping mocks base method.
-func (m *MockDB) Ping() bool {
+func (m *MockDB) Ping(arg0 context.Context) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping")
+	ret := m.ctrl.Call(m, "Ping", arg0)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Ping indicates an expected call of Ping.
-func (mr *MockDBMockRecorder) Ping() *gomock.Call {
+func (mr *MockDBMockRecorder) Ping(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockDB)(nil).Ping))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockDB)(nil).Ping), arg0)
 }

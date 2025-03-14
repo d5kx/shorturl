@@ -25,7 +25,7 @@ import (
 // shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\handlers\event-handlers\event-processor_test.go
 
 // go install github.com/golang/mock/mockgen@latest
-// mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases/link LinkStorage
+// mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases LinkStorage,DB
 
 // go run main.go -l debug -f tmp/short-url-db.json
 
