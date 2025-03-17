@@ -1,0 +1,71 @@
+package filestor
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
+	"github.com/d5kx/shorturl/internal/app/entities"
+	"github.com/d5kx/shorturl/internal/util/e"
+	"os"
+)
+
+type Storage struct {
+	log      loggers.Logger
+	file     *os.File
+	isActive bool
+}
+
+func New(logger loggers.Logger) *Storage {
+	return &Storage{
+		log: logger,
+	}
+}
+
+func (s *Storage) Open(filename string) error {
+	var err error
+	s.file, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return e.WrapError("can't open file: "+filename, err)
+	}
+
+	s.isActive = true
+	return nil
+}
+
+func (s *Storage) Close() error {
+	var err error
+
+	if err = s.file.Close(); err != nil {
+		s.log.Fatal("file closing error when saving to file", err)
+	}
+	return err
+}
+
+func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+	//s.writer.Reset(s.file)
+	writer := bufio.NewWriter(s.file)
+	if err := json.NewEncoder(writer).Encode(l); err != nil {
+		return e.WrapError("can't encode json when saving to file", err)
+	}
+	if err := writer.Flush(); err != nil {
+		s.log.Fatal("error in Flush() when saving to file", err)
+	}
+	return nil
+}
+
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
+	return "", nil
+}
+
+func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
+	return false, nil
+}
+
+func (s *Storage) Remove(ctx context.Context, shortURL string) error {
+	return nil
+}
+
+func (s *Storage) IsActive() bool {
+	return s.isActive
+}

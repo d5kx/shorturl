@@ -12,8 +12,9 @@ import (
 )
 
 type Storage struct {
-	log loggers.Logger
-	db  *sql.DB
+	log      loggers.Logger
+	db       *sql.DB
+	isActive bool
 }
 
 func New(logger loggers.Logger) *Storage {
@@ -22,14 +23,20 @@ func New(logger loggers.Logger) *Storage {
 	}
 }
 
-func (s *Storage) Connect(connectionString string) error {
+func (s *Storage) Open(connectionString string) error {
 	var err error
 	s.db, err = sql.Open("pgx", connectionString)
 	if err != nil {
-		s.log.Debug("DB not open", zap.Error(err))
+		s.log.Info("DB not open", zap.Error(err))
 		return e.WrapError("can't open DB", err)
 	}
-	s.log.Debug("DB open", zap.String("PostgreSQL", connectionString))
+	s.db.SetMaxOpenConns(100)
+	s.db.SetMaxIdleConns(100)
+	s.db.SetConnMaxIdleTime(time.Minute * 4)
+	s.db.SetConnMaxLifetime(time.Minute * 3)
+
+	s.log.Info("DB open", zap.String("PostgreSQL", connectionString))
+	s.Ping(context.Background())
 	return nil
 }
 
@@ -51,6 +58,7 @@ func (s *Storage) Ping(ctx context.Context) bool {
 		return false
 	}
 	s.log.Debug("DB ping: ok")
+	s.isActive = true
 	return true
 }
 
@@ -61,26 +69,35 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 		return e.WrapError("unable to start SQL transaction", err)
 	}
 
-	_, err = tx.ExecContext(ctx, `
-		CREATE TABLE public.links (
+	query := `CREATE SCHEMA IF NOT EXISTS public`
+	_, err = tx.ExecContext(ctx, query)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+	}
+
+	query = `
+		CREATE TABLE IF NOT EXISTS public.links (
 			uuid text NOT NULL,
 			short_url text NOT NULL,
 			original_url text NOT NULL,
 			PRIMARY KEY (uuid)
-		)
-	`)
+		)`
+	_, err = tx.ExecContext(ctx, query)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+	}
 
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			s.log.Debug("unable to rollback transaction", zap.Error(err))
+		} else {
+			s.log.Debug("rollback transaction")
 		}
+
 		s.log.Debug("unable to execute SQL transaction", zap.Error(err))
 		return e.WrapError("unable to execute SQL transaction", err)
 	}
-	/*
-		ALTER TABLE IF EXISTS public.links
-		OWNER to postgres;
-	*/
+
 	return tx.Commit()
 }
 
@@ -98,4 +115,7 @@ func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
+}
+func (s *Storage) IsActive() bool {
+	return s.isActive
 }

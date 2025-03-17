@@ -30,10 +30,12 @@ func New(logger loggers.Logger) *Storage {
 
 func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	s.db[l.ShortURL] = l.OriginalURL
-	if conf.GetDBFileName() == "" {
+	/*if conf.GetDBFileName() == "" {
 		return nil
 	}
 	return s.SaveToFile(l)
+	*/
+	return nil
 }
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
@@ -105,4 +107,8 @@ func (s *Storage) LoadFromFile() error {
 	}
 
 	return nil
+}
+
+func (s *Storage) IsActive() bool {
+	return true
 }

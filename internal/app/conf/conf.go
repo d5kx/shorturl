@@ -21,7 +21,7 @@ func ParseFlags() {
 	flag.StringVar(&cnf.flagResponseURLAddress, "b", "http://localhost:8080", "base address of the resulting shortened URL")
 	flag.StringVar(&cnf.flagLoggerLevel, "l", "debug", "loggers level")
 	flag.StringVar(&cnf.flagDBFileName, "f", "/tmp/short-url-db.json", "full file name to save DB")
-	flag.StringVar(&cnf.flagPostgreSQLConnectionString, "d", "host=localhost port=5432 user=postgres password=820610 dbname=shorturl sslmode=disable", "connection string for PostgreSQL DB")
+	flag.StringVar(&cnf.flagPostgreSQLConnectionString, "d", "" /*"host=localhost port=5432 user=postgres password=820610 dbname=shorturl sslmode=disable"*/, "connection string for PostgreSQL DB")
 
 	flag.Parse()
 
@@ -39,6 +39,7 @@ func ParseFlags() {
 	if cnf.flagLoggerLevel != "info" && cnf.flagLoggerLevel != "debug" {
 		cnf.flagLoggerLevel = "info"
 	}
+	//fmt.Println(cnf)
 }
 
 func GetServAdr() string {

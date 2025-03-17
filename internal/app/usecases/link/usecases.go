@@ -12,27 +12,42 @@ import (
 )
 
 type UseCases struct {
-	db     usecases.LinkStorage
+	mdb    usecases.LinkStorage
+	fdb    usecases.LinkStorage
+	qdb    usecases.LinkStorage
 	logger loggers.Logger
 	gen    generators.Generator
 }
 
-func New(storage usecases.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
+func New(mstor, fstor, qstor usecases.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
+	logger.Info("storage activity",
+		zap.Bool("mem", mstor.IsActive()),
+		zap.Bool("file", fstor.IsActive()),
+		zap.Bool("sql", qstor.IsActive()),
+	)
 	return &UseCases{
-		db:     storage,
+		mdb:    mstor,
+		fdb:    fstor,
+		qdb:    qstor,
 		logger: logger,
 		gen:    generator,
 	}
 }
 
 func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error) {
-	var shortURL string
-	var err error
+	var (
+		shortURL string
+		err      error
+	)
 
 	isExist := true
 	for isExist {
 		shortURL = u.gen.ShortURL()
-		isExist, err = u.db.IsExist(ctx, shortURL)
+		if u.qdb.IsActive() {
+			isExist, err = u.qdb.IsExist(ctx, shortURL)
+		} else {
+			isExist, err = u.mdb.IsExist(ctx, shortURL)
+		}
 		if err != nil {
 			u.logger.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
 			return "", e.WrapError("database error", err)
@@ -44,7 +59,15 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
 	}
-	err = u.db.Save(ctx, &l)
+
+	if u.qdb.IsActive() {
+		err = u.qdb.Save(ctx, &l)
+	} else {
+		if u.fdb.IsActive() {
+			err = u.fdb.Save(ctx, &l)
+		}
+		err = u.mdb.Save(ctx, &l)
+	}
 
 	if err != nil {
 		u.logger.Debug("Save() database error", zap.Error(err))
@@ -54,7 +77,17 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 }
 
 func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error) {
-	originalURL, err := u.db.Get(ctx, shortURL)
+	var (
+		originalURL string
+		err         error
+	)
+
+	if u.qdb.IsActive() {
+		originalURL, err = u.qdb.Get(ctx, shortURL)
+	} else {
+		originalURL, err = u.mdb.Get(ctx, shortURL)
+	}
+
 	if err != nil {
 		u.logger.Debug("Get() database error", zap.String("sURL", shortURL), zap.Error(err))
 		return nil, e.WrapError("database error", err)
