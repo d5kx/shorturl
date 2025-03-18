@@ -11,6 +11,9 @@ type LinkStorage interface {
 	IsExist(ctx context.Context, shortURL string) (bool, error)
 	Remove(ctx context.Context, shortURL string) error
 	IsActive() bool
+	Open(string) error
+	Close() error
+	Bootstrap(ctx context.Context) error
 }
 
 type DB interface {

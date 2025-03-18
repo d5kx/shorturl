@@ -7,6 +7,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/util/e"
+	"go.uber.org/zap"
 	"os"
 )
 
@@ -37,19 +38,18 @@ func (s *Storage) Close() error {
 	var err error
 
 	if err = s.file.Close(); err != nil {
-		s.log.Fatal("file closing error when saving to file", err)
+		s.log.Fatal("file closing error when saving to file", zap.Error(err))
 	}
 	return err
 }
 
 func (s *Storage) Save(ctx context.Context, l *link.Link) error {
-	//s.writer.Reset(s.file)
 	writer := bufio.NewWriter(s.file)
 	if err := json.NewEncoder(writer).Encode(l); err != nil {
 		return e.WrapError("can't encode json when saving to file", err)
 	}
 	if err := writer.Flush(); err != nil {
-		s.log.Fatal("error in Flush() when saving to file", err)
+		s.log.Info("error in Flush() when saving to file", zap.Error(err))
 	}
 	return nil
 }
@@ -68,4 +68,7 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 
 func (s *Storage) IsActive() bool {
 	return s.isActive
+}
+func (s *Storage) Bootstrap(ctx context.Context) error {
+	return nil
 }

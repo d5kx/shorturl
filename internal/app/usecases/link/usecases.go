@@ -12,23 +12,14 @@ import (
 )
 
 type UseCases struct {
-	mdb    usecases.LinkStorage
-	fdb    usecases.LinkStorage
-	qdb    usecases.LinkStorage
+	db     usecases.LinkStorage
 	logger loggers.Logger
 	gen    generators.Generator
 }
 
-func New(mstor, fstor, qstor usecases.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
-	logger.Info("storage activity",
-		zap.Bool("mem", mstor.IsActive()),
-		zap.Bool("file", fstor.IsActive()),
-		zap.Bool("sql", qstor.IsActive()),
-	)
+func New(storage usecases.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
 	return &UseCases{
-		mdb:    mstor,
-		fdb:    fstor,
-		qdb:    qstor,
+		db:     storage,
 		logger: logger,
 		gen:    generator,
 	}
@@ -43,11 +34,7 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 	isExist := true
 	for isExist {
 		shortURL = u.gen.ShortURL()
-		if u.qdb.IsActive() {
-			isExist, err = u.qdb.IsExist(ctx, shortURL)
-		} else {
-			isExist, err = u.mdb.IsExist(ctx, shortURL)
-		}
+		isExist, err = u.db.IsExist(ctx, shortURL)
 		if err != nil {
 			u.logger.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
 			return "", e.WrapError("database error", err)
@@ -60,14 +47,7 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 		ShortURL:    shortURL,
 	}
 
-	if u.qdb.IsActive() {
-		err = u.qdb.Save(ctx, &l)
-	} else {
-		if u.fdb.IsActive() {
-			err = u.fdb.Save(ctx, &l)
-		}
-		err = u.mdb.Save(ctx, &l)
-	}
+	err = u.db.Save(ctx, &l)
 
 	if err != nil {
 		u.logger.Debug("Save() database error", zap.Error(err))
@@ -82,11 +62,7 @@ func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error)
 		err         error
 	)
 
-	if u.qdb.IsActive() {
-		originalURL, err = u.qdb.Get(ctx, shortURL)
-	} else {
-		originalURL, err = u.mdb.Get(ctx, shortURL)
-	}
+	originalURL, err = u.db.Get(ctx, shortURL)
 
 	if err != nil {
 		u.logger.Debug("Get() database error", zap.String("sURL", shortURL), zap.Error(err))

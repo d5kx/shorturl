@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"go.uber.org/zap"
 	"os"
 
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
@@ -79,14 +80,25 @@ func (s *Storage) SaveToFile(l *link.Link) error {
 	return nil
 }
 
-func (s *Storage) LoadFromFile() error {
-	file, err := os.OpenFile(conf.GetDBFileName(), os.O_RDONLY|os.O_CREATE, 0666)
+func (s *Storage) IsActive() bool {
+	return true
+}
+
+func (s *Storage) Open(name string) error {
+	return nil
+}
+
+func (s *Storage) Close() error {
+	return nil
+}
+func (s *Storage) Bootstrap(ctx context.Context) error {
+	file, err := os.OpenFile(conf.GetDBFileName(), os.O_RDONLY, 0666)
 	if err != nil {
 		return e.WrapError("can't open file "+conf.GetDBFileName(), err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			s.log.Fatal("file closing error when load from file", err)
+			s.log.Info("file closing error when load from file", zap.Error(err))
 		}
 	}()
 
@@ -103,12 +115,8 @@ func (s *Storage) LoadFromFile() error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		s.log.Fatal("file scanning error when loaf from file", err)
+		s.log.Info("file scanning error when loaf from file", zap.Error(err))
 	}
 
 	return nil
-}
-
-func (s *Storage) IsActive() bool {
-	return true
 }
