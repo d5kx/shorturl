@@ -102,7 +102,16 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 }
 
 func (s *Storage) Save(ctx context.Context, l *link.Link) error {
-	return nil
+	query := `
+		INSERT INTO public.links
+		(uuid, short_url, original_url)
+		VALUES ($1, $2, $3)
+		`
+	_, err := s.db.ExecContext(ctx, query, l.UID, l.ShortURL, l.OriginalURL)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+	}
+	return err
 }
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
@@ -110,7 +119,11 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
 }
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
-	return false, nil
+	query := `SELECT EXISTS( SELECT 1 FROM  public.links WHERE short_url=$1)`
+	var isExist bool
+	row := s.db.QueryRowContext(ctx, query, shortURL)
+	err := row.Scan(&isExist)
+	return isExist, err
 }
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/d5kx/shorturl/internal/app/adapters/compress/gzip"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/routers/base"
@@ -52,8 +51,6 @@ func main() {
 	manager.Open("")
 	defer manager.Close()
 	manager.Bootstrap(context.Background())
-
-	fmt.Println(m.GetDB())
 
 	u := uselink.New(manager, basegen.New(), zl)
 	postgUse := usedb.New(p)
