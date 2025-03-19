@@ -43,7 +43,7 @@ func (s *Storage) Open(connectionString string) error {
 func (s *Storage) Close() error {
 	err := s.db.Close()
 	if err != nil {
-		s.log.Debug("DB not close", zap.Error(err))
+		s.log.Info("DB not close", zap.Error(err))
 		return e.WrapError("can't close DB", err)
 	}
 	return nil
@@ -114,12 +114,16 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return err
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
-	return "", nil
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
+	query := `SELECT uuid, original_url FROM  public.links WHERE short_url=$1`
+	var uuid, originalURL string
+	row := s.db.QueryRowContext(ctx, query, shortURL)
+	err := row.Scan(&uuid, &originalURL)
+	return uuid, originalURL, err
 }
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
-	query := `SELECT EXISTS( SELECT 1 FROM  public.links WHERE short_url=$1)`
+	query := `SELECT EXISTS (SELECT 1 FROM  public.links WHERE short_url=$1)`
 	var isExist bool
 	row := s.db.QueryRowContext(ctx, query, shortURL)
 	err := row.Scan(&isExist)

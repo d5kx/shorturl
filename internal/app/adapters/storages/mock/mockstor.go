@@ -21,11 +21,11 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return nil
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
 	if shortURL == "AbCdEf" {
-		return "http://ya.ru", nil
+		return "", "http://ya.ru", nil
 	}
-	return "", nil
+	return "", "", nil
 }
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
@@ -36,6 +36,10 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
 
-func (s *Storage) IsActive() bool {
-	return true
-}
+func (s *Storage) IsActive() bool { return true }
+
+func (s *Storage) Open(name string) error { return nil }
+
+func (s *Storage) Close() error { return nil }
+
+func (s *Storage) Bootstrap(ctx context.Context) error { return nil }

@@ -6,10 +6,10 @@ import (
 )
 
 type UseCases struct {
-	db usecases.DB
+	db storages.DB
 }
 
-func New(db usecases.DB) *UseCases {
+func New(db storages.DB) *UseCases {
 	return &UseCases{db: db}
 }
 

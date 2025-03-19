@@ -12,16 +12,16 @@ import (
 )
 
 type UseCases struct {
-	db     usecases.LinkStorage
-	logger loggers.Logger
-	gen    generators.Generator
+	db  storages.LinkStorage
+	log loggers.Logger
+	gen generators.Generator
 }
 
-func New(storage usecases.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
+func New(storage storages.LinkStorage, generator generators.Generator, logger loggers.Logger) *UseCases {
 	return &UseCases{
-		db:     storage,
-		logger: logger,
-		gen:    generator,
+		db:  storage,
+		log: logger,
+		gen: generator,
 	}
 }
 
@@ -36,7 +36,7 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 		shortURL = u.gen.ShortURL()
 		isExist, err = u.db.IsExist(ctx, shortURL)
 		if err != nil {
-			u.logger.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
+			u.log.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
 			return "", e.WrapError("database error", err)
 		}
 	}
@@ -50,7 +50,7 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 	err = u.db.Save(ctx, &l)
 
 	if err != nil {
-		u.logger.Debug("Save() database error", zap.Error(err))
+		u.log.Debug("Save() database error", zap.Error(err))
 		return "", e.WrapError("database error", err)
 	}
 	return l.ShortURL, err
@@ -58,24 +58,25 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 
 func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error) {
 	var (
-		originalURL string
-		err         error
+		uuid, originalURL string
+		err               error
 	)
 
-	originalURL, err = u.db.Get(ctx, shortURL)
+	uuid, originalURL, err = u.db.Get(ctx, shortURL)
 
 	if err != nil {
-		u.logger.Debug("Get() database error", zap.String("sURL", shortURL), zap.Error(err))
+		u.log.Debug("Get() database error", zap.String("sURL", shortURL), zap.Error(err))
 		return nil, e.WrapError("database error", err)
 	}
 
 	if originalURL == "" {
-		u.logger.Debug("short link does not exist in the database", zap.String("short", shortURL))
+		u.log.Debug("short link does not exist in the database", zap.String("short", shortURL))
 		return nil, nil
 	}
 
 	return &link.Link{
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
+		UID:         uuid,
 	}, nil
 }

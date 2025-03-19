@@ -29,7 +29,7 @@ func (s *Storage) Open(filename string) error {
 	if err != nil {
 		return e.WrapError("can't open file: "+filename, err)
 	}
-
+	s.log.Info("file open:", zap.String("filename", filename))
 	s.isActive = true
 	return nil
 }
@@ -38,7 +38,7 @@ func (s *Storage) Close() error {
 	var err error
 
 	if err = s.file.Close(); err != nil {
-		s.log.Fatal("file closing error when saving to file", zap.Error(err))
+		s.log.Info("file closing error when saving to file", zap.Error(err))
 	}
 	return err
 }
@@ -54,8 +54,8 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return nil
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, error) {
-	return "", nil
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
+	return "", "", nil
 }
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
