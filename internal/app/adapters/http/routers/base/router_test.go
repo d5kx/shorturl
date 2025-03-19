@@ -37,8 +37,8 @@ func TestRouter(t *testing.T) {
 	s := gomockstor.NewMockLinkStorage(ctrl)
 	ping := gomockstor.NewMockDB(ctrl)
 
-	s.EXPECT().Get(gomock.Any(), "AbCdEf").Return("http://ya.ru", nil)
-	s.EXPECT().Get(gomock.Any(), gomock.Any()).Return("", nil)
+	s.EXPECT().Get(gomock.Any(), "AbCdEf").Return("00000-0000", "http://ya.ru", nil)
+	s.EXPECT().Get(gomock.Any(), gomock.Any()).Return("", "", nil)
 
 	s.EXPECT().IsExist(gomock.Any(), gomock.Any()).Return(false, nil)
 	s.EXPECT().IsExist(gomock.Any(), gomock.Any()).AnyTimes()
