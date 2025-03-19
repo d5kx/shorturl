@@ -1,8 +1,8 @@
 package basegen
 
 import (
+	"github.com/google/uuid"
 	"math/rand"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -40,8 +40,6 @@ func (g *Gen) ShortURL() string {
 	return b.String()
 }
 
-func (g *Gen) UID() string {
-	rand.NewSource(time.Now().UnixNano())
-	return strconv.Itoa(rand.Intn(99999999))
-
+func (g *Gen) UUID() string {
+	return uuid.New().String()
 }

@@ -16,9 +16,9 @@ type Server struct {
 func (s *Server) Run() error {
 
 	s.log.Info("running servers",
-		zap.String("servers address", conf.GetServAdr()),
-		zap.String("base address of response", conf.GetResURLAdr()),
-		zap.String("loggers level", conf.GetLoggerLevel()),
+		zap.String("address", conf.GetServAdr()),
+		zap.String("address of response", conf.GetResURLAdr()),
+		zap.String("log level", conf.GetLoggerLevel()),
 	)
 	err := s.router.Run()
 	if err != nil {

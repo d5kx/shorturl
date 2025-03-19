@@ -15,7 +15,7 @@ func (g *Gen) ShortURL() string {
 	return "AbCdEf"
 }
 
-func (g *Gen) UID() string {
+func (g *Gen) UUID() string {
 	return strconv.Itoa(23456789)
 
 }
