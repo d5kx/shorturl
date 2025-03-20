@@ -94,6 +94,20 @@ func (mr *MockLinkStorageMockRecorder) Save(arg0, arg1 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockLinkStorage)(nil).Save), arg0, arg1)
 }
 
+// SaveTx mocks base method.
+func (m *MockLinkStorage) SaveTx(arg0 context.Context, arg1 []*link.Link) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveTx", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveTx indicates an expected call of SaveTx.
+func (mr *MockLinkStorageMockRecorder) SaveTx(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveTx", reflect.TypeOf((*MockLinkStorage)(nil).SaveTx), arg0, arg1)
+}
+
 // MockDB is a mock of DB interface.
 type MockDB struct {
 	ctrl     *gomock.Controller

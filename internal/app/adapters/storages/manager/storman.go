@@ -67,6 +67,19 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 
 	return err
 }
+func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
+	var err error
+	if s.qdb.IsActive() {
+		return s.qdb.SaveTx(ctx, links)
+	}
+
+	if s.fdb.IsActive() {
+		err = s.fdb.SaveTx(ctx, links)
+	}
+	err = s.mdb.SaveTx(ctx, links)
+
+	return err
+}
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
 	if s.qdb.IsActive() {

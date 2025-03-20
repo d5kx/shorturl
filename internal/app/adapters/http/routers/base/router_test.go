@@ -46,6 +46,9 @@ func TestRouter(t *testing.T) {
 	s.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 	s.EXPECT().Save(gomock.Any(), gomock.Any()).AnyTimes()
 
+	s.EXPECT().SaveTx(gomock.Any(), gomock.Any()).Return(nil)
+	s.EXPECT().SaveTx(gomock.Any(), gomock.Any()).AnyTimes()
+
 	ping.EXPECT().Ping(gomock.Any()).Return(true)
 	ping.EXPECT().Ping(gomock.Any()).AnyTimes()
 
@@ -141,6 +144,16 @@ func TestRouter(t *testing.T) {
 			expectedBody:        `{"result":"` + conf.GetResURLAdr() + `/AbCdEf"` + `}`,
 		},
 		{
+			name:                "POST: api/json/batch valid compressed request",
+			path:                "/api/shorten/batch",
+			method:              http.MethodPost,
+			contentType:         "application/json",
+			body:                `[{"correlation_id":"id=1","original_url":"https://ya1.ru"},{"correlation_id":"id=2","original_url":"https://ya2.ru"}]`,
+			expectedCode:        http.StatusCreated,
+			expectedContentType: "application/json",
+			expectedBody:        `[{"correlation_id":"id=1","short_url":"AbCdEf"},{"correlation_id":"id=2","short_url":"AbCdEf"}]`,
+		},
+		{
 			name:                "GET: valid request",
 			method:              http.MethodGet,
 			path:                "/AbCdEf",
@@ -187,7 +200,7 @@ func TestRouter(t *testing.T) {
 			var body *bytes.Buffer
 
 			switch tc.name {
-			case "POST: api/json valid compressed request":
+			case "POST: api/json valid compressed request", "POST: api/json/batch valid compressed request":
 				body = bytes.NewBuffer(nil)
 				zb := gzip.NewWriter(body)
 				_, err := zb.Write([]byte(tc.body))
@@ -202,7 +215,9 @@ func TestRouter(t *testing.T) {
 			require.NoError(t, err)
 
 			req.Header.Set("Content-Type", tc.contentType)
-			if tc.name == "POST: api/json valid compressed request" {
+
+			switch tc.name {
+			case "POST: api/json valid compressed request", "POST: api/json/batch valid compressed request":
 				req.Header.Set("Content-Encoding", "gzip")
 				req.Header.Set("Accept-Encoding", "gzip")
 			}
@@ -215,7 +230,7 @@ func TestRouter(t *testing.T) {
 			var respBody []byte
 
 			switch tc.name {
-			case "POST: api/json valid compressed request":
+			case "POST: api/json valid compressed request", "POST: api/json/batch valid compressed request":
 				zr, err := gzip.NewReader(resp.Body)
 				require.NoError(t, err)
 

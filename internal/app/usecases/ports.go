@@ -7,6 +7,7 @@ import (
 
 type LinkStorage interface {
 	Save(ctx context.Context, link *link.Link) error
+	SaveTx(ctx context.Context, slice []*link.Link) error
 	Get(ctx context.Context, shortURL string) (string, string, error)
 	IsExist(ctx context.Context, shortURL string) (bool, error)
 	Remove(ctx context.Context, shortURL string) error

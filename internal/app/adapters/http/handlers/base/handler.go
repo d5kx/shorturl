@@ -120,8 +120,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	}
 	_, err = res.Write(jsonByte)
 	if err != nil {
-		h.log.Debug("can't process POST request (can't write response JSON body)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
 		return
 	}
 	/*
@@ -131,6 +130,73 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}*/
+}
+
+func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request) {
+	if !h.checkContentType(req, "application/json") {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var slice []models.ResponseSONBatch
+	var originalURLs []string
+
+	dec := json.NewDecoder(req.Body)
+	_, err := dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+
+	for dec.More() {
+		var request models.RequestJSONBatch
+		if err := dec.Decode(&request); err != nil {
+			h.logBadRequest(res, "can't decode request JSON body", err)
+			return
+		}
+		originalURLs = append(originalURLs, request.OriginalURL)
+
+		slice = append(slice, models.ResponseSONBatch{
+			CorrelationId: request.CorrelationId,
+			ShortURL:      "",
+		})
+	}
+
+	_, err = dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+
+	if len(slice) == 0 {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sURLs, err := h.linkUse.SaveTx(req.Context(), originalURLs)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (short link is not saved in the database)", err)
+		return
+	}
+
+	for k, _ := range slice {
+		slice[k].ShortURL = sURLs[k]
+	}
+
+	jsonByte, err := json.Marshal(slice)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't encode response)", err)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
+		return
+	}
 }
 
 func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
@@ -155,4 +221,9 @@ func (h *Handler) checkContentType(req *http.Request, t string) bool {
 		return false
 	}
 	return true
+}
+
+func (h *Handler) logBadRequest(res http.ResponseWriter, mes string, err error) {
+	h.log.Debug(mes, zap.Error(err))
+	res.WriteHeader(http.StatusBadRequest)
 }

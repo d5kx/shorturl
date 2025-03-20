@@ -53,6 +53,9 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	}
 	return nil
 }
+func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
+	return nil
+}
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
 	return "", "", nil

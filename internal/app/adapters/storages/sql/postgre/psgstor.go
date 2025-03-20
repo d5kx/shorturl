@@ -110,8 +110,31 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	_, err := s.db.ExecContext(ctx, query, l.UID, l.ShortURL, l.OriginalURL)
 	if err != nil {
 		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+		return e.WrapError("unable to execute SQL transaction", err)
 	}
-	return err
+	return nil
+}
+
+func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		s.log.Debug("unable to start SQL transaction", zap.Error(err))
+		return e.WrapError("unable to start SQL transaction", err)
+	}
+
+	for _, v := range links {
+		err = s.Save(ctx, v)
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.log.Debug("unable to rollback transaction", zap.Error(err))
+			} else {
+				s.log.Debug("rollback transaction")
+			}
+			s.log.Debug("unable to execute SQL transaction", zap.Error(err))
+			return e.WrapError("unable to execute SQL transaction", err)
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {

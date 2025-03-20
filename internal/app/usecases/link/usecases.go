@@ -56,6 +56,41 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 	return l.ShortURL, err
 }
 
+func (u *UseCases) SaveTx(ctx context.Context, slice []string) ([]string, error) {
+	var (
+		shortURL string
+		err      error
+		links    []*link.Link
+		shorts   []string
+	)
+	for _, v := range slice {
+		isExist := true
+		for isExist {
+			shortURL = u.gen.ShortURL()
+			isExist, err = u.db.IsExist(ctx, shortURL)
+			if err != nil {
+				u.log.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
+				return nil, e.WrapError("database error", err)
+			}
+		}
+		links = append(links, &link.Link{
+			UID:         u.gen.UUID(),
+			OriginalURL: v,
+			ShortURL:    shortURL,
+		})
+		shorts = append(shorts, shortURL)
+
+	}
+	err = u.db.SaveTx(ctx, links)
+
+	if err != nil {
+		u.log.Debug("Save() database error", zap.Error(err))
+		return nil, e.WrapError("database error", err)
+	}
+
+	return shorts, nil
+}
+
 func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error) {
 	var (
 		uuid, originalURL string

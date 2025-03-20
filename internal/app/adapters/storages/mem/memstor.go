@@ -34,6 +34,9 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	s.db[l.ShortURL] = l /*l.OriginalURL*/
 	return nil
 }
+func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
+	return nil
+}
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
 	value, ok := s.db[shortURL]
@@ -54,29 +57,6 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
 
-/*
-	func (s *Storage) SaveToFile(l *link.Link) error {
-		file, err := os.OpenFile(conf.GetDBFileName(), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			return e.WrapError("can't open file "+conf.GetDBFileName(), err)
-		}
-		writer := bufio.NewWriter(file)
-		defer func() {
-			if err := writer.Flush(); err != nil {
-				s.log.Fatal("error in Flush() when saving to file", err)
-			}
-			if err := file.Close(); err != nil {
-				s.log.Fatal("file closing error when saving to file", err)
-			}
-		}()
-
-		if err = json.NewEncoder(writer).Encode(l); err != nil {
-			return e.WrapError("can't encode json when saving to file", err)
-		}
-
-		return nil
-	}
-*/
 func (s *Storage) IsActive() bool {
 	return s.isActive
 }

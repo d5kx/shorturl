@@ -11,7 +11,7 @@ type Gen struct {
 }
 
 const (
-	shorURLLength = 6
+	shorURLLength = 9
 )
 
 var symbolsDictionary = []byte{
