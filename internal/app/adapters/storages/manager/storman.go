@@ -106,12 +106,12 @@ func (s *Storage) IsActive() bool {
 func (s *Storage) Open(name string) error {
 	var err error
 
-	if conf.GetPostgreSQLConnectionString() != "" {
-		err = s.qdb.Open(conf.GetPostgreSQLConnectionString())
-		if err != nil {
-			s.logger.Info("can't connect to PostgreSQL db", zap.Error(err))
-		}
+	//if conf.GetPostgreSQLConnectionString() != "" {
+	err = s.qdb.Open(conf.GetPostgreSQLConnectionString())
+	if err != nil {
+		s.logger.Info("can't connect to PostgreSQL db", zap.Error(err))
 	}
+	//}
 
 	if !s.qdb.IsActive() && conf.GetDBFileName() != "" {
 		err = s.fdb.Open(conf.GetDBFileName())
