@@ -67,6 +67,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 
 	return err
 }
+
 func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
 	var err error
 	if s.qdb.IsActive() {
