@@ -110,9 +110,8 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	_, err := s.db.ExecContext(ctx, query, l.UID, l.ShortURL, l.OriginalURL)
 	if err != nil {
 		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
-		return e.WrapError("unable to execute SQL query", err)
+		return e.WrapError("unable to execute SQL transaction", err)
 	}
-	s.log.Debug("execute SQL query", zap.String("query", query))
 	return nil
 }
 
@@ -135,13 +134,7 @@ func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
 			return e.WrapError("unable to execute SQL transaction", err)
 		}
 	}
-	err = tx.Commit()
-	if err != nil {
-		s.log.Debug("unable to execute SQL transaction", zap.Error(err))
-		return e.WrapError("unable to execute SQL transaction", err)
-	}
-	s.log.Debug("execute SQL transaction")
-	return nil
+	return tx.Commit()
 }
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
@@ -149,10 +142,6 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, err
 	var uuid, originalURL string
 	row := s.db.QueryRowContext(ctx, query, shortURL)
 	err := row.Scan(&uuid, &originalURL)
-	s.log.Debug("execute SQL query",
-		zap.String("query", query),
-		zap.String("uuid", uuid),
-		zap.String("original_url", originalURL))
 	return uuid, originalURL, err
 }
 
