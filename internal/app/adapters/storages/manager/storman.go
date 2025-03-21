@@ -62,6 +62,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 
 	if s.fdb.IsActive() {
 		err = s.fdb.Save(ctx, l)
+		s.qdb.Save(ctx, l) //для теста, удалить
 	}
 	err = s.mdb.Save(ctx, l)
 

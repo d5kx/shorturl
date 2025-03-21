@@ -34,6 +34,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	s.db[l.ShortURL] = l /*l.OriginalURL*/
 	return nil
 }
+
 func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
 	for _, v := range slice {
 		s.Save(ctx, v)
