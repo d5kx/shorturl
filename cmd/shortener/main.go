@@ -16,6 +16,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
 	"github.com/d5kx/shorturl/internal/app/usecases/link"
 	"github.com/d5kx/shorturl/internal/util/generators/basegen"
+	"time"
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
@@ -51,7 +52,9 @@ func main() {
 	manager := storman.New(m, f, p, zl)
 	manager.Open("")
 	defer manager.Close()
-	manager.Bootstrap(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	manager.Bootstrap(ctx)
 
 	u := uselink.New(manager, basegen.New(), zl)
 	postgUse := usedb.New(p)
