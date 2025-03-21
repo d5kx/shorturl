@@ -31,12 +31,12 @@ func New(mstor, fstor, qstor storages.ManagedStorage, logger loggers.Logger) *St
 func (s *Storage) Bootstrap(ctx context.Context) error {
 	var err error
 
-	//if s.qdb.IsActive() {
-	err = s.qdb.Bootstrap(context.Background())
-	if err != nil {
-		s.logger.Info("can't bootstrap PostgreSQL db", zap.Error(err))
+	if s.qdb.IsActive() {
+		err = s.qdb.Bootstrap(context.Background())
+		if err != nil {
+			s.logger.Info("can't bootstrap PostgreSQL db", zap.Error(err))
+		}
 	}
-	//}
 
 	if s.fdb.IsActive() {
 		err = s.fdb.Bootstrap(context.Background())
@@ -62,7 +62,6 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 
 	if s.fdb.IsActive() {
 		err = s.fdb.Save(ctx, l)
-		s.qdb.Save(ctx, l) //для теста, удалить
 	}
 	err = s.mdb.Save(ctx, l)
 
@@ -107,12 +106,12 @@ func (s *Storage) IsActive() bool {
 func (s *Storage) Open(name string) error {
 	var err error
 
-	//if conf.GetPostgreSQLConnectionString() != "" {
-	err = s.qdb.Open(conf.GetPostgreSQLConnectionString())
-	if err != nil {
-		s.logger.Info("can't connect to PostgreSQL db", zap.Error(err))
+	if conf.GetPostgreSQLConnectionString() != "" {
+		err = s.qdb.Open(conf.GetPostgreSQLConnectionString())
+		if err != nil {
+			s.logger.Info("can't connect to PostgreSQL db", zap.Error(err))
+		}
 	}
-	//}
 
 	if !s.qdb.IsActive() && conf.GetDBFileName() != "" {
 		err = s.fdb.Open(conf.GetDBFileName())
@@ -139,14 +138,14 @@ func (s *Storage) Open(name string) error {
 func (s *Storage) Close() error {
 	var err error
 
-	//if conf.GetPostgreSQLConnectionString() != "" {
-	err = s.qdb.Close()
-	if err != nil {
-		s.logger.Info("can't close connection to PostgreSQL db", zap.Error(err))
+	if s.qdb.IsActive() {
+		err = s.qdb.Close()
+		if err != nil {
+			s.logger.Info("can't close connection to PostgreSQL db", zap.Error(err))
+		}
 	}
-	//}
 
-	if conf.GetDBFileName() != "" {
+	if s.fdb.IsActive() {
 		err = s.fdb.Close()
 		if err != nil {
 			s.logger.Info("can't close connection to file db", zap.Error(err))

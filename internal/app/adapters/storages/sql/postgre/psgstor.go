@@ -58,7 +58,7 @@ func (s *Storage) Ping(ctx context.Context) bool {
 		return false
 	}
 	s.log.Debug("DB ping: ok")
-	//s.isActive = true
+	s.isActive = true
 	return true
 }
 
