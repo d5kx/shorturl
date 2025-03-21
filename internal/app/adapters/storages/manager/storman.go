@@ -31,12 +31,12 @@ func New(mstor, fstor, qstor storages.ManagedStorage, logger loggers.Logger) *St
 func (s *Storage) Bootstrap(ctx context.Context) error {
 	var err error
 
-	if s.qdb.IsActive() {
-		err = s.qdb.Bootstrap(context.Background())
-		if err != nil {
-			s.logger.Info("can't bootstrap PostgreSQL db", zap.Error(err))
-		}
+	//if s.qdb.IsActive() {
+	err = s.qdb.Bootstrap(context.Background())
+	if err != nil {
+		s.logger.Info("can't bootstrap PostgreSQL db", zap.Error(err))
 	}
+	//}
 
 	if s.fdb.IsActive() {
 		err = s.fdb.Bootstrap(context.Background())
