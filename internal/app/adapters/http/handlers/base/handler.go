@@ -31,6 +31,7 @@ func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger
 }
 
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
+	h.log.Debug("start handler.Get()", zap.String("path", req.URL.Path))
 	short := strings.TrimPrefix(req.URL.Path, "/")
 	l, err := h.linkUse.Get(req.Context(), short)
 	if err != nil || l == nil {
