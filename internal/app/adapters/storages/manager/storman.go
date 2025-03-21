@@ -138,12 +138,12 @@ func (s *Storage) Open(name string) error {
 func (s *Storage) Close() error {
 	var err error
 
-	if conf.GetPostgreSQLConnectionString() != "" {
-		err = s.qdb.Close()
-		if err != nil {
-			s.logger.Info("can't close connection to PostgreSQL db", zap.Error(err))
-		}
+	//if conf.GetPostgreSQLConnectionString() != "" {
+	err = s.qdb.Close()
+	if err != nil {
+		s.logger.Info("can't close connection to PostgreSQL db", zap.Error(err))
 	}
+	//}
 
 	if conf.GetDBFileName() != "" {
 		err = s.fdb.Close()
