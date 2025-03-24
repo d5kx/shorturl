@@ -115,3 +115,28 @@ func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error)
 		UID:         uuid,
 	}, nil
 }
+
+func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link, error) {
+	var (
+		uuid, shortURL string
+		err            error
+	)
+
+	uuid, shortURL, err = u.db.GetShort(ctx, originalURL)
+
+	if err != nil {
+		u.log.Debug("GetShort() database error", zap.String("sURL", shortURL), zap.Error(err))
+		return nil, e.WrapError("database error", err)
+	}
+
+	if shortURL == "" {
+		u.log.Debug("original URL does not exist in the database", zap.String("original", originalURL))
+		return nil, nil
+	}
+
+	return &link.Link{
+		OriginalURL: originalURL,
+		ShortURL:    shortURL,
+		UID:         uuid,
+	}, nil
+}

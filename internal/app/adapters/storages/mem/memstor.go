@@ -51,6 +51,15 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, err
 	return value.UID, value.OriginalURL, nil
 }
 
+func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
+	for _, v := range s.db {
+		if v.OriginalURL == originalURL {
+			return v.UID, v.ShortURL, nil
+		}
+	}
+	return "", "", nil
+}
+
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil

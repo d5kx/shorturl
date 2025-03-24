@@ -3,7 +3,10 @@ package basehandler
 import (
 	"bytes"
 	"encoding/json"
-	usedb "github.com/d5kx/shorturl/internal/app/usecases/db"
+	"errors"
+	"github.com/d5kx/shorturl/internal/app/usecases/db"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"net/http"
 	"strings"
@@ -40,7 +43,6 @@ func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 			zap.Error(err),
 		)
 		res.WriteHeader(http.StatusBadRequest)
-
 		return
 	}
 
@@ -55,33 +57,35 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var buf bytes.Buffer
-	buf.ReadFrom(req.Body)
+	_, err := buf.ReadFrom(req.Body)
+	if err != nil {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	defer req.Body.Close()
+
+	data := buf.String()
 	if buf.Len() == 0 {
-		h.log.Debug("can't process POST request (no link in body request)", zap.String("body", buf.String()))
-		res.WriteHeader(http.StatusBadRequest)
+		h.logBadRequest(res, "can't process POST request (body is empty)", nil)
 		return
 	}
 
-	sURL, err := h.linkUse.Save(req.Context(), buf.String())
+	sURL, err := h.linkUse.Save(req.Context(), data)
 	if err != nil {
-		h.log.Debug("can't process POST request (short link is not saved)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+			l, err := h.linkUse.GetShort(req.Context(), data)
+			if err != nil || l == nil {
+				h.logBadRequest(res, "can't process GetShort request: original ="+data, err)
+				return
+			}
+			h.writePostResponse(res, l.ShortURL, http.StatusConflict)
+			return
+		}
+		h.logBadRequest(res, "can't process POST request (short link is not saved)", err)
 		return
 	}
-
-	buf.Reset()
-	buf.WriteString(conf.GetResURLAdr() + "/")
-	buf.WriteString(sURL)
-
-	res.Header().Set("Content-Type", "text/plain")
-	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write(buf.Bytes())
-	if err != nil {
-		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	h.writePostResponse(res, sURL, http.StatusCreated)
 }
 
 func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
@@ -227,4 +231,18 @@ func (h *Handler) checkContentType(req *http.Request, t string) bool {
 func (h *Handler) logBadRequest(res http.ResponseWriter, mes string, err error) {
 	h.log.Debug(mes, zap.Error(err))
 	res.WriteHeader(http.StatusBadRequest)
+}
+
+func (h *Handler) writePostResponse(res http.ResponseWriter, data string, successStatus int) {
+	var buf bytes.Buffer
+
+	buf.WriteString(conf.GetResURLAdr() + "/")
+	buf.WriteString(data)
+	res.Header().Set("Content-Type", "text/plain")
+	res.WriteHeader(successStatus)
+	_, err := res.Write(buf.Bytes())
+	if err != nil {
+		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
+		res.WriteHeader(http.StatusBadRequest)
+	}
 }

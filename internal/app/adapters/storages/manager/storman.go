@@ -88,6 +88,13 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, err
 	return s.mdb.Get(ctx, shortURL)
 }
 
+func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
+	if s.qdb.IsActive() {
+		return s.qdb.GetShort(ctx, originalURL)
+	}
+	return s.mdb.GetShort(ctx, originalURL)
+}
+
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	if s.qdb.IsActive() {
 		return s.qdb.IsExist(ctx, shortURL)

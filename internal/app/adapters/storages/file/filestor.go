@@ -60,6 +60,9 @@ func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
 	return "", "", nil
 }
+func (s *Storage) GetShort(ctx context.Context, shortURL string) (string, string, error) {
+	return "", "", nil
+}
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	return false, nil

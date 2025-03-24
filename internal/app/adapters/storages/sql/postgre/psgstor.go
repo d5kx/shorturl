@@ -6,9 +6,10 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/util/e"
+	"time"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
-	"time"
 )
 
 type Storage struct {
@@ -63,42 +64,26 @@ func (s *Storage) Ping(ctx context.Context) bool {
 }
 
 func (s *Storage) Bootstrap(ctx context.Context) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		s.log.Debug("unable to start SQL transaction", zap.Error(err))
-		return e.WrapError("unable to start SQL transaction", err)
-	}
-
-	query := `CREATE SCHEMA IF NOT EXISTS public`
-	_, err = tx.ExecContext(ctx, query)
-	if err != nil {
-		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
-	}
-
-	query = `
+	query := `
+		CREATE SCHEMA IF NOT EXISTS public;
 		CREATE TABLE IF NOT EXISTS public.links (
 			uuid text NOT NULL,
 			short_url text NOT NULL,
 			original_url text NOT NULL,
 			PRIMARY KEY (uuid)
-		)`
-	_, err = tx.ExecContext(ctx, query)
+		);
+		CREATE UNIQUE INDEX IF NOT EXISTS original ON public.links (original_url);`
+
+	_, err := s.db.ExecContext(ctx, query)
 	if err != nil {
 		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+		return e.WrapError("unable to execute SQL query", err)
 	}
+	s.log.Debug("bootstrap: execute SQL query",
+		zap.String("query", "CREATE SCHEMA..., CREATE TABLE..., CREATE UNIQUE INDEX..."),
+	)
 
-	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			s.log.Debug("unable to rollback transaction", zap.Error(err))
-		} else {
-			s.log.Debug("rollback transaction")
-		}
-
-		s.log.Debug("unable to execute SQL transaction", zap.Error(err))
-		return e.WrapError("unable to execute SQL transaction", err)
-	}
-
-	return tx.Commit()
+	return nil
 }
 
 func (s *Storage) Save(ctx context.Context, l *link.Link) error {
@@ -161,6 +146,22 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, err
 		zap.String("shortURL", shortURL),
 	)
 	return uuid, originalURL, nil
+}
+
+func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
+	query := `SELECT uuid, short_url FROM  public.links WHERE original_url=$1`
+	var uuid, shortURL string
+	row := s.db.QueryRowContext(ctx, query, originalURL)
+	err := row.Scan(&uuid, &shortURL)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+		return "", "", e.WrapError("unable to execute SQL query", err)
+	}
+	s.log.Debug("execute SQL query",
+		zap.String("query", query),
+		zap.String("originalURL", originalURL),
+	)
+	return uuid, shortURL, nil
 }
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {

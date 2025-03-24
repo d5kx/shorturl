@@ -16,7 +16,6 @@ import (
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
 	"github.com/d5kx/shorturl/internal/app/usecases/link"
 	"github.com/d5kx/shorturl/internal/util/generators/basegen"
-	"time"
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
@@ -25,9 +24,6 @@ import (
 // curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/GlTBlr"
 // curl -v -X GET "http://localhost:8080/ping"
 // curl -v -X POST -H "Content-Type:application/json" -d "[{\"correlation_id\":\"id=1\",\"original_url\":\"https://ya1.ru\"},{\"correlation_id\":\"id=2\",\"original_url\":\"https://ya2.ru\"}]", "http://localhost:8080/api/shorten/batch"
-
-// shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
-// shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\handlers\event-handlers\event-processor_test.go
 
 // go install github.com/golang/mock/mockgen@latest
 // mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases LinkStorage,DB
@@ -52,9 +48,7 @@ func main() {
 	manager := storman.New(m, f, p, zl)
 	manager.Open("")
 	defer manager.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	manager.Bootstrap(ctx)
+	manager.Bootstrap(context.Background())
 
 	u := uselink.New(manager, basegen.New(), zl)
 	postgUse := usedb.New(p)
