@@ -31,6 +31,12 @@ func New(logger loggers.Logger) *Storage {
 }
 
 func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+	for _, v := range s.db {
+		if v.OriginalURL == l.OriginalURL {
+			return e.ErrSaveUniqueViolation
+		}
+	}
+
 	s.db[l.ShortURL] = l /*l.OriginalURL*/
 	return nil
 }

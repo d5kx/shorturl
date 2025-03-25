@@ -61,12 +61,15 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	}
 
 	if s.fdb.IsActive() {
+		err = s.mdb.Save(ctx, l)
+		if err != nil {
+			return err
+		}
 		err = s.fdb.Save(ctx, l)
 	}
-	err = s.mdb.Save(ctx, l)
-
 	return err
 }
+
 func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
 	var err error
 	if s.qdb.IsActive() {

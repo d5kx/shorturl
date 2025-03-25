@@ -1,6 +1,11 @@
 package e
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrSaveUniqueViolation = errors.New("index uniqueness conflict")
 
 func WrapError(msg string, err error) error {
 	return fmt.Errorf("%s: %w", msg, err)

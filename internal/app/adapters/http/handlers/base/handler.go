@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
+	"github.com/d5kx/shorturl/internal/util/e"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -73,7 +74,7 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 	sURL, err := h.linkUse.Save(req.Context(), data)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
 			l, err := h.linkUse.GetShort(req.Context(), data)
 			if err != nil || l == nil {
 				h.logBadRequest(res, "can't process GetShort request: original ="+data, err)
@@ -98,43 +99,27 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	var request models.RequestJSON
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&request); err != nil {
-		h.log.Debug("can't decode request JSON body", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		h.logBadRequest(res, "can't decode request JSON body", err)
 		return
 	}
 
 	sURL, err := h.linkUse.Save(req.Context(), request.URL)
 	if err != nil {
-		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	// заполняем модель ответа
-	var response = models.ResponseJSON{
-		Result: conf.GetResURLAdr() + "/" + sURL,
-	}
+		var pgErr *pgconn.PgError
 
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	// сериализуем ответ сервера
-	jsonByte, err := json.Marshal(response)
-	if err != nil {
-		h.log.Debug("can't process POST request (can't encode response)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	_, err = res.Write(jsonByte)
-	if err != nil {
-		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
-		return
-	}
-	/*
-		enc := json.NewEncoder(res)
-		if err := enc.Encode(response); err != nil {
-			p.loggers.Debug("can't encode response", zap.Error(err))
-			res.WriteHeader(http.StatusBadRequest)
+		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
+			l, err := h.linkUse.GetShort(req.Context(), request.URL)
+			if err != nil || l == nil {
+				h.logBadRequest(res, "can't process GetShort request: original ="+request.URL, err)
+				return
+			}
+			h.writePostJsonResponse(res, l.ShortURL, http.StatusConflict)
 			return
-		}*/
+		}
+		h.logBadRequest(res, "can't process POST request (short link is not saved in the database)", err)
+		return
+	}
+	h.writePostJsonResponse(res, sURL, http.StatusCreated)
 }
 
 func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request) {
@@ -242,7 +227,26 @@ func (h *Handler) writePostResponse(res http.ResponseWriter, data string, succes
 	res.WriteHeader(successStatus)
 	_, err := res.Write(buf.Bytes())
 	if err != nil {
-		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		h.logBadRequest(res, "can't process POST request (can't write response body)", err)
+	}
+}
+
+func (h *Handler) writePostJsonResponse(res http.ResponseWriter, data string, successStatus int) {
+	var response = models.ResponseJSON{
+		Result: conf.GetResURLAdr() + "/" + data,
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(successStatus)
+	// сериализуем ответ сервера
+	jsonByte, err := json.Marshal(response)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (json marshal error)", err)
+		return
+	}
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
+		return
 	}
 }
