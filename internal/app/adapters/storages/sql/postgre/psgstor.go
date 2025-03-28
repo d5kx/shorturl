@@ -92,7 +92,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 		(uuid, short_url, original_url)
 		VALUES ($1, $2, $3)
 		`
-	_, err := s.db.ExecContext(ctx, query, l.UID, l.ShortURL, l.OriginalURL)
+	_, err := s.db.ExecContext(ctx, query, l.UUID, l.ShortURL, l.OriginalURL)
 	if err != nil {
 		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
 		return e.WrapError("unable to execute SQL query", err)

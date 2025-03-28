@@ -1,6 +1,7 @@
 package baserouter
 
 import (
+	"github.com/d5kx/shorturl/internal/app/adapters/auth"
 	"net/http"
 
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers"
@@ -18,22 +19,24 @@ type BaseRouter struct {
 	handler handlers.Handler
 	comp    compress.Compressor
 	log     loggers.Logger
+	auth    auth.Authorizer
 }
 
-func New(handler handlers.Handler, compressor compress.Compressor, logger loggers.Logger) *BaseRouter {
+func New(handler handlers.Handler, compressor compress.Compressor, authorizer auth.Authorizer, logger loggers.Logger) *BaseRouter {
 	var r BaseRouter
 	r.log = logger
 	r.handler = handler
 	r.comp = compressor
+	r.auth = authorizer
 
 	r.Router = chi.NewRouter()
-	r.Router.Post(`/`, r.log.RequestLogging(r.comp.RequestCompress(r.handler.Post)))
-	r.Router.Post(`/api/shorten`, r.log.RequestLogging(r.comp.RequestCompress(r.handler.PostAPIShorten)))
-	r.Router.Post(`/api/shorten/batch`, r.log.RequestLogging(r.comp.RequestCompress(r.handler.PostAPIShortenBatch)))
+	r.Router.Post(`/`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.Post))))
+	r.Router.Post(`/api/shorten`, r.log.RequestLogging(r.comp.Do(r.handler.PostAPIShorten)))
+	r.Router.Post(`/api/shorten/batch`, r.log.RequestLogging(r.comp.Do(r.handler.PostAPIShortenBatch)))
 	r.Router.Get(`/ping`, r.log.RequestLogging(r.handler.PingDB))
-	r.Router.Get(`/{id}`, r.log.RequestLogging(r.comp.RequestCompress(r.handler.Get)))
-	r.Router.NotFound(r.log.RequestLogging(r.comp.RequestCompress(r.handler.BadRequest)))
-	r.Router.MethodNotAllowed(r.log.RequestLogging(r.comp.RequestCompress(r.handler.BadRequest)))
+	r.Router.Get(`/{id}`, r.log.RequestLogging(r.comp.Do(r.handler.Get)))
+	r.Router.NotFound(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))
+	r.Router.MethodNotAllowed(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))
 
 	return &r
 }

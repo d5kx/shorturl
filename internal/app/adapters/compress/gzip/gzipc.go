@@ -72,7 +72,7 @@ func (gz *Gzipc) initCompressReader(r io.ReadCloser) error {
 	return nil
 }
 
-func (gz *Gzipc) RequestCompress(next http.HandlerFunc) http.HandlerFunc {
+func (gz *Gzipc) Do(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// по умолчанию устанавливаем оригинальный http.ResponseWriter,
 		// его будем передавать следующей функции

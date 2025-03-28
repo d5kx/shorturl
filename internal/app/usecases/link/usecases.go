@@ -25,7 +25,7 @@ func New(storage storages.LinkStorage, generator generators.Generator, logger lo
 	}
 }
 
-func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error) {
+func (u *UseCases) Save(ctx context.Context, originalURL string, userId string) (string, error) {
 	var (
 		shortURL string
 		err      error
@@ -42,7 +42,7 @@ func (u *UseCases) Save(ctx context.Context, originalURL string) (string, error)
 	}
 
 	var l = link.Link{
-		UID:         u.gen.UUID(),
+		UUID:        userId, /*u.gen.UUID()*/
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
 	}
@@ -74,7 +74,7 @@ func (u *UseCases) SaveTx(ctx context.Context, slice []string) ([]string, error)
 			}
 		}
 		links = append(links, &link.Link{
-			UID:         u.gen.UUID(),
+			UUID:        u.gen.UUID(),
 			OriginalURL: v,
 			ShortURL:    shortURL,
 		})
@@ -112,7 +112,7 @@ func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error)
 	return &link.Link{
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
-		UID:         uuid,
+		UUID:        uuid,
 	}, nil
 }
 
@@ -137,6 +137,6 @@ func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link
 	return &link.Link{
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
-		UID:         uuid,
+		UUID:        uuid,
 	}, nil
 }

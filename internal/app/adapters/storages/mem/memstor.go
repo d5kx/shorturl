@@ -54,13 +54,13 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, err
 	if !ok {
 		return "", "", nil
 	}
-	return value.UID, value.OriginalURL, nil
+	return value.UUID, value.OriginalURL, nil
 }
 
 func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
 	for _, v := range s.db {
 		if v.OriginalURL == originalURL {
-			return v.UID, v.ShortURL, nil
+			return v.UUID, v.ShortURL, nil
 		}
 	}
 	return "", "", nil

@@ -70,8 +70,9 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 		h.logBadRequest(res, "can't process POST request (body is empty)", nil)
 		return
 	}
-
-	sURL, err := h.linkUse.Save(req.Context(), data)
+	// получаем user_id из контекста запроса
+	v := req.Context().Value("user_id")
+	sURL, err := h.linkUse.Save(req.Context(), data, v.(string))
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
@@ -102,8 +103,9 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		h.logBadRequest(res, "can't decode request JSON body", err)
 		return
 	}
-
-	sURL, err := h.linkUse.Save(req.Context(), request.URL)
+	// получаем user_id из контекста запроса
+	v := req.Context().Value("user_id")
+	sURL, err := h.linkUse.Save(req.Context(), request.URL, v.(string))
 	if err != nil {
 		var pgErr *pgconn.PgError
 
@@ -215,7 +217,9 @@ func (h *Handler) checkContentType(req *http.Request, t string) bool {
 
 func (h *Handler) logBadRequest(res http.ResponseWriter, mes string, err error) {
 	h.log.Debug(mes, zap.Error(err))
-	res.WriteHeader(http.StatusBadRequest)
+	//res.WriteHeader(http.StatusBadRequest)
+	http.Error(res, mes, http.StatusBadRequest)
+
 }
 
 func (h *Handler) writePostResponse(res http.ResponseWriter, data string, successStatus int) {

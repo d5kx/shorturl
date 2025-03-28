@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+
+	"github.com/d5kx/shorturl/internal/app/adapters/auth/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/compress/gzip"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/routers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/servers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/simple"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/zap"
-	filestor "github.com/d5kx/shorturl/internal/app/adapters/storages/file"
+	"github.com/d5kx/shorturl/internal/app/adapters/storages/file"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/manager"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mem"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/sql/postgre"
@@ -19,6 +21,7 @@ import (
 )
 
 // curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
+// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" --cookie "user_id=5555" "http://localhost:8080"
 // curl -v -X POST -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" -d "http://ya.ru" "http://localhost:8080"
 // curl -v -X POST -H "Content-Type:application/json"  -H "Accept-Encoding:gzip" --output "-" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:8080/api/shorten"
 // curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/GlTBlr"
@@ -50,12 +53,14 @@ func main() {
 	defer manager.Close()
 	manager.Bootstrap(context.Background())
 
-	u := uselink.New(manager, basegen.New(), zl)
-	postgUse := usedb.New(p)
+	gen := basegen.New()
+	linkUse := uselink.New(manager, gen, zl)
+	dbUse := usedb.New(p)
 	compressor := gzipc.New(zl)
+	auth := baseauth.New(gen, zl)
 
-	handler := basehandler.New(u, postgUse, zl)
-	router := baserouter.New(handler, compressor, zl)
+	handler := basehandler.New(linkUse, dbUse, zl)
+	router := baserouter.New(handler, compressor, auth, zl)
 	server := baseserver.New(router, zl)
 	if err := server.Run(); err != nil {
 		sl.Fatal("can't run service", err)
