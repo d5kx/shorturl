@@ -66,6 +66,10 @@ func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, str
 	return "", "", nil
 }
 
+func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, error) {
+	return make([][]string, 0), nil
+}
+
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil
@@ -88,6 +92,7 @@ func (s *Storage) Open(name string) error {
 func (s *Storage) Close() error {
 	return nil
 }
+
 func (s *Storage) Bootstrap(ctx context.Context) error {
 	file, err := os.OpenFile(conf.GetDBFileName(), os.O_RDONLY, 0666)
 	if err != nil {

@@ -13,7 +13,12 @@ type RequestJSONBatch struct {
 	OriginalURL   string `json:"original_url"`
 }
 
-type ResponseSONBatch struct {
+type ResponseJSONBatch struct {
 	CorrelationId string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
+}
+
+type ResponseJSONGetUserUrls struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }

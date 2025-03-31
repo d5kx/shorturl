@@ -59,7 +59,7 @@ func TestRouter(t *testing.T) {
 	p := basehandler.New(u, postUse, ml)
 	f := New(p, c, ml)
 
-	ts := httptest.NewServer(f.Router)
+	ts := httptest.NewServer(f.rout)
 	defer ts.Close()
 
 	var testTable = []struct {

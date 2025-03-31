@@ -63,7 +63,9 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, err
 func (s *Storage) GetShort(ctx context.Context, shortURL string) (string, string, error) {
 	return "", "", nil
 }
-
+func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, error) {
+	return make([][]string, 0), nil
+}
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	return false, nil
 }

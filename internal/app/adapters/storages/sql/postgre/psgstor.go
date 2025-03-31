@@ -69,8 +69,7 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS public.links (
 			uuid text NOT NULL,
 			short_url text NOT NULL,
-			original_url text NOT NULL,
-			PRIMARY KEY (uuid)
+			original_url text NOT NULL
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS original ON public.links (original_url);`
 
@@ -162,6 +161,40 @@ func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, str
 		zap.String("originalURL", originalURL),
 	)
 	return uuid, shortURL, nil
+}
+
+func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, error) {
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	query := `SELECT  short_url, original_url FROM  public.links WHERE uuid=$1`
+	rows, err = s.db.QueryContext(ctx, query, uuid)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+		return nil, e.WrapError("unable to execute SQL query", err)
+	}
+	defer rows.Close()
+	result := make([][]string, 0)
+	for rows.Next() {
+		var shortURL, originalURL string
+		if err = rows.Scan(&shortURL, &originalURL); err != nil {
+			s.log.Debug("unable to scan SQL query result", zap.Error(err))
+			return nil, e.WrapError("unable to scan SQL query result", err)
+		}
+		result = append(result, []string{shortURL, originalURL})
+	}
+	err = rows.Close()
+	if err != nil {
+		s.log.Debug("unable to scan SQL query result", zap.Error(err))
+		return nil, e.WrapError("unable to close rows SQL query result", err)
+	}
+
+	if err := rows.Err(); err != nil {
+		s.log.Debug("unable to scan SQL query result", zap.Error(err))
+		return nil, e.WrapError("unable to scan SQL query result", err)
+	}
+	return result, nil
 }
 
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {

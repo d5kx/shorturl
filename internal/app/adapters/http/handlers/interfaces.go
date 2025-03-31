@@ -6,6 +6,7 @@ import (
 
 type Handler interface {
 	Get(res http.ResponseWriter, req *http.Request)
+	GetUserUrls(res http.ResponseWriter, req *http.Request)
 	Post(res http.ResponseWriter, req *http.Request)
 	PostAPIShorten(res http.ResponseWriter, req *http.Request)
 	PostAPIShortenBatch(res http.ResponseWriter, req *http.Request)

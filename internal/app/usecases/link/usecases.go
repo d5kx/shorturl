@@ -25,6 +25,8 @@ func New(storage storages.LinkStorage, generator generators.Generator, logger lo
 	}
 }
 
+// Save сохраняет в базу данных оригинальный url и идентификатор пользователя,
+// генерирует сокращенный адрес
 func (u *UseCases) Save(ctx context.Context, originalURL string, userId string) (string, error) {
 	var (
 		shortURL string
@@ -91,6 +93,7 @@ func (u *UseCases) SaveTx(ctx context.Context, slice []string) ([]string, error)
 	return shorts, nil
 }
 
+// Get возвращает указатель на объект ссылки по сокращенному url
 func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error) {
 	var (
 		uuid, originalURL string
@@ -116,6 +119,7 @@ func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error)
 	}, nil
 }
 
+// GetShort возвращает указатель на объект ссылки по оригинальному url
 func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link, error) {
 	var (
 		uuid, shortURL string
@@ -139,4 +143,22 @@ func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link
 		ShortURL:    shortURL,
 		UUID:        uuid,
 	}, nil
+}
+
+// GetUserUrls возвращает слайс указателей на объекты ссылки по идентификатору пользователя
+func (u *UseCases) GetUserUrls(ctx context.Context, uuid string) ([]*link.Link, error) {
+	// получаем [][]string с результатами запроса
+	result, err := u.db.GetUserUrls(ctx, uuid)
+	if err != nil {
+		u.log.Debug("GetUserUrls() database error", zap.String("uuid", uuid), zap.Error(err))
+		return nil, e.WrapError("database error", err)
+	}
+	// создаем слайс указателей на ссылки
+	links := make([]*link.Link, 0)
+	// заполняем результирующий слайс, uuid преднамеренно оставляем пустым
+	for _, v := range result {
+		links = append(links, &link.Link{UUID: "", ShortURL: v[0], OriginalURL: v[1]})
+	}
+
+	return links, nil
 }

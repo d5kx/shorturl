@@ -34,9 +34,11 @@ func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger
 	}
 }
 
+// Get хендлер для получения оригинального адреса ссылки
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
-	h.log.Debug("start handler.Get()", zap.String("path", req.URL.Path))
+	// получаем короткую ссылку из адреса запроса
 	short := strings.TrimPrefix(req.URL.Path, "/")
+	// получаем оригинальный адрес
 	l, err := h.linkUse.Get(req.Context(), short)
 	if err != nil || l == nil {
 		h.log.Debug("can't process GET request",
@@ -46,9 +48,45 @@ func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	// пишем ответ, переадресация с новым адресом
 	res.Header().Set("Location", l.OriginalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+// GetUserUrls хендлер для получения списка всех ссылок пользователя
+func (h *Handler) GetUserUrls(res http.ResponseWriter, req *http.Request) {
+	// получаем идентификатор пользователя из контекста
+	v := req.Context().Value("user_id")
+	// получаем массив указателей на ссылки пользователя
+	links, err := h.linkUse.GetUserUrls(req.Context(), v.(string))
+	if err != nil {
+		h.log.Debug("can't process GET request",
+			zap.String("user_id", v.(string)),
+			zap.Error(err),
+		)
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// если сохраненных ссылок у пользователя нет
+	if len(links) == 0 {
+		http.Error(res, "links not found", http.StatusNoContent)
+		return
+	}
+	// сериализуем в JSON массив ссылок, uuid получаем пустым, в сериализацию не попадает
+	jsonByte, err := json.Marshal(links)
+	if err != nil {
+		h.logBadRequest(res, "can't process GET request (can't encode response)", err)
+		return
+	}
+	// пишем заголовки ответа
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	// пишем тело ответа
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		h.logBadRequest(res, "can't process GET request (can't write response JSON body)", err)
+		return
+	}
 }
 
 func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
@@ -130,7 +168,7 @@ func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	var slice []models.ResponseSONBatch
+	var slice []models.ResponseJSONBatch
 	var originalURLs []string
 
 	dec := json.NewDecoder(req.Body)
@@ -148,7 +186,7 @@ func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request
 		}
 		originalURLs = append(originalURLs, request.OriginalURL)
 
-		slice = append(slice, models.ResponseSONBatch{
+		slice = append(slice, models.ResponseJSONBatch{
 			CorrelationId: request.CorrelationId,
 			ShortURL:      "",
 		})
@@ -191,6 +229,7 @@ func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request
 	}
 }
 
+// PingDB хендлер для проверки соединения с базой данных
 func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
 	if h.dbUse.Ping(req.Context()) {
 		res.WriteHeader(http.StatusOK)
@@ -217,9 +256,7 @@ func (h *Handler) checkContentType(req *http.Request, t string) bool {
 
 func (h *Handler) logBadRequest(res http.ResponseWriter, mes string, err error) {
 	h.log.Debug(mes, zap.Error(err))
-	//res.WriteHeader(http.StatusBadRequest)
 	http.Error(res, mes, http.StatusBadRequest)
-
 }
 
 func (h *Handler) writePostResponse(res http.ResponseWriter, data string, successStatus int) {

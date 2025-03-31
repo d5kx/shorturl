@@ -10,6 +10,7 @@ type LinkStorage interface {
 	SaveTx(ctx context.Context, slice []*link.Link) error
 	Get(ctx context.Context, shortURL string) (uuid string, originalURL string, err error)
 	GetShort(ctx context.Context, originalURL string) (uuid string, shortURL string, err error)
+	GetUserUrls(ctx context.Context, uuid string) ([][]string, error)
 	IsExist(ctx context.Context, shortURL string) (bool, error)
 	Remove(ctx context.Context, shortURL string) error
 }
