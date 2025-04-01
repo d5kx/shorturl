@@ -58,7 +58,7 @@ func (u *UseCases) Save(ctx context.Context, originalURL string, userId string) 
 	return l.ShortURL, err
 }
 
-func (u *UseCases) SaveTx(ctx context.Context, slice []string) ([]string, error) {
+func (u *UseCases) SaveTx(ctx context.Context, slice []string, userId string) ([]string, error) {
 	var (
 		shortURL string
 		err      error
@@ -76,7 +76,7 @@ func (u *UseCases) SaveTx(ctx context.Context, slice []string) ([]string, error)
 			}
 		}
 		links = append(links, &link.Link{
-			UUID:        u.gen.UUID(),
+			UUID:        userId,
 			OriginalURL: v,
 			ShortURL:    shortURL,
 		})

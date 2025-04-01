@@ -30,12 +30,27 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 	r.auth = authorizer
 
 	r.rout = chi.NewRouter()
+
+	// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
+	// curl -v -X POST -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" -d "http://ya.ru" "http://localhost:8080"
+	// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDQyNzE0MzQsIlVzZXJJRCI6IjZiZjBiZTg3LTU2ZjAtNDU0Yi04MTIxLWFjYzY4ZTllNDk0MyJ9.6UcRBP6lbQG3fGfDCCSjbYjgOKbRbwmVkULis_3Tr8o" "http://localhost:8080"
 	r.rout.Post(`/`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.Post))))
-	r.rout.Post(`/api/shorten`, r.log.RequestLogging(r.comp.Do(r.handler.PostAPIShorten)))
-	r.rout.Post(`/api/shorten/batch`, r.log.RequestLogging(r.comp.Do(r.handler.PostAPIShortenBatch)))
+
+	// curl -v -X POST -H "Content-Type:application/json"  -H "Accept-Encoding:gzip" --output "-" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:8080/api/shorten"
+	r.rout.Post(`/api/shorten`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.PostAPIShorten))))
+
+	// curl -v -X POST -H "Content-Type:application/json" -d "[{\"correlation_id\":\"id=1\",\"original_url\":\"https://ya1.ru\"},{\"correlation_id\":\"id=2\",\"original_url\":\"https://ya2.ru\"}]", "http://localhost:8080/api/shorten/batch"
+	r.rout.Post(`/api/shorten/batch`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.PostAPIShortenBatch))))
+
+	// curl -v -X GET "http://localhost:8080/ping"
 	r.rout.Get(`/ping`, r.log.RequestLogging(r.handler.PingDB))
+
+	// curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/EeZjtNwXX"
 	r.rout.Get(`/{id}`, r.log.RequestLogging(r.comp.Do(r.handler.Get)))
+
+	// curl -v -X GET -H "Content-Type:text/plain" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDQyNzE0MzQsIlVzZXJJRCI6IjZiZjBiZTg3LTU2ZjAtNDU0Yi04MTIxLWFjYzY4ZTllNDk0MyJ9.6UcRBP6lbQG3fGfDCCSjbYjgOKbRbwmVkULis_3Tr8o" "http://localhost:8080/api/user/urls"
 	r.rout.Get(`/api/user/urls`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.GetUserUrls))))
+
 	r.rout.NotFound(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))
 	r.rout.MethodNotAllowed(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))
 

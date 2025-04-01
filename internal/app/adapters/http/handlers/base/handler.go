@@ -45,7 +45,7 @@ func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 			zap.String("short", short),
 			zap.Error(err),
 		)
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	// пишем ответ, переадресация с новым адресом
@@ -64,7 +64,7 @@ func (h *Handler) GetUserUrls(res http.ResponseWriter, req *http.Request) {
 			zap.String("user_id", v.(string)),
 			zap.Error(err),
 		)
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	// если сохраненных ссылок у пользователя нет
@@ -89,48 +89,60 @@ func (h *Handler) GetUserUrls(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Post хендлер для добавления одной ссылки и получения одной короткой ссылки
 func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
 	if !h.checkContentType(req, "text/plain") && !h.checkContentType(req, "application/x-gzip") {
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
+	// читаем оригинальную ссылку из тела запроса
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(req.Body)
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	defer req.Body.Close()
-
-	data := buf.String()
+	// если данных в теле запроса нет
 	if buf.Len() == 0 {
 		h.logBadRequest(res, "can't process POST request (body is empty)", nil)
 		return
 	}
+	// получаем оригинальную ссылку в виде строки
+	originalUrl := buf.String()
 	// получаем user_id из контекста запроса
-	v := req.Context().Value("user_id")
-	sURL, err := h.linkUse.Save(req.Context(), data, v.(string))
+	userId := req.Context().Value("user_id")
+	//пытаемся сохранить оригинальную ссылку с идентификатором пользователя
+	sURL, err := h.linkUse.Save(req.Context(), originalUrl, userId.(string))
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
-			l, err := h.linkUse.GetShort(req.Context(), data)
+		// если ошибки нарушения уникальности, оригинальная ссылка уже существует
+		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) &&
+			pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
+			// получаем существующую короткую ссылку
+			l, err := h.linkUse.GetShort(req.Context(), originalUrl)
 			if err != nil || l == nil {
-				h.logBadRequest(res, "can't process GetShort request: original ="+data, err)
+				h.logBadRequest(res, "can't process GetShort request: original ="+originalUrl, err)
 				return
 			}
+			// пишем ответ с существующей короткой ссылкой
 			h.writePostResponse(res, l.ShortURL, http.StatusConflict)
 			return
 		}
+		// если неконкретизированные ошибки
 		h.logBadRequest(res, "can't process POST request (short link is not saved)", err)
 		return
 	}
+	// ошибок нет, пишем ответ с новой короткой ссылкой
 	h.writePostResponse(res, sURL, http.StatusCreated)
 }
 
+// PostAPIShorten хендлер для добавления одной ссылки и получения одной короткой ссылки в json формате
 func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
 	if !h.checkContentType(req, "application/json") {
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -142,86 +154,99 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// получаем user_id из контекста запроса
-	v := req.Context().Value("user_id")
-	sURL, err := h.linkUse.Save(req.Context(), request.URL, v.(string))
+	userId := req.Context().Value("user_id")
+	//пытаемся сохранить оригинальную ссылку с идентификатором пользователя
+	sURL, err := h.linkUse.Save(req.Context(), request.URL, userId.(string))
 	if err != nil {
 		var pgErr *pgconn.PgError
-
+		// если ошибки нарушения уникальности, оригинальная ссылка уже существует
 		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
+			// получаем существующую короткую ссылку
 			l, err := h.linkUse.GetShort(req.Context(), request.URL)
 			if err != nil || l == nil {
 				h.logBadRequest(res, "can't process GetShort request: original ="+request.URL, err)
 				return
 			}
+			// пишем ответ с существующей короткой ссылкой
 			h.writePostJsonResponse(res, l.ShortURL, http.StatusConflict)
 			return
 		}
+		// если неконкретизированные ошибки
 		h.logBadRequest(res, "can't process POST request (short link is not saved in the database)", err)
 		return
 	}
+	// ошибок нет, пишем ответ с новой короткой ссылкой
 	h.writePostJsonResponse(res, sURL, http.StatusCreated)
 }
 
+// PostAPIShortenBatch хендлер для добавления пачки ссылок и получения пачки коротких ссылок в json формате
 func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
 	if !h.checkContentType(req, "application/json") {
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	var slice []models.ResponseJSONBatch
-	var originalURLs []string
+	var (
+		responseSlice []models.ResponseJSONBatch // слайс моделей для ответа
+		originalURLs  []string                   // слайс оригинальных ссылок
+	)
 
 	dec := json.NewDecoder(req.Body)
+	// читаем "[" в json массиве
 	_, err := dec.Token()
 	if err != nil {
 		h.logBadRequest(res, "can't decode request JSON body", err)
 		return
 	}
-
+	// читаем поэлементно json массив
 	for dec.More() {
 		var request models.RequestJSONBatch
 		if err := dec.Decode(&request); err != nil {
 			h.logBadRequest(res, "can't decode request JSON body", err)
 			return
 		}
+		// сохраняем оригинальные ссылки
 		originalURLs = append(originalURLs, request.OriginalURL)
-
-		slice = append(slice, models.ResponseJSONBatch{
+		// заполняем слайс моделей для ответа, пока без коротких ссылок
+		responseSlice = append(responseSlice, models.ResponseJSONBatch{
 			CorrelationId: request.CorrelationId,
 			ShortURL:      "",
 		})
 	}
-
+	// читаем "]" в json массиве
 	_, err = dec.Token()
 	if err != nil {
 		h.logBadRequest(res, "can't decode request JSON body", err)
 		return
 	}
-
-	if len(slice) == 0 {
-		res.WriteHeader(http.StatusBadRequest)
+	// запрос и ответ пустые
+	if len(responseSlice) == 0 {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
-	sURLs, err := h.linkUse.SaveTx(req.Context(), originalURLs)
+	// получаем user_id из контекста запроса
+	userId := req.Context().Value("user_id")
+	// пытаемся сохранить транзакцией в базу данных оригинальные ссылки
+	// в ответ получаем слайс коротких ссылок
+	sURLs, err := h.linkUse.SaveTx(req.Context(), originalURLs, userId.(string))
 	if err != nil {
 		h.logBadRequest(res, "can't process POST request (short link is not saved in the database)", err)
 		return
 	}
-
-	for k, _ := range slice {
-		slice[k].ShortURL = sURLs[k]
+	// заполняем короткие ссылки в слайсе моделей ответа
+	for k, _ := range responseSlice {
+		responseSlice[k].ShortURL = sURLs[k]
 	}
-
-	jsonByte, err := json.Marshal(slice)
+	// сериализируем в json слайс моделей ответа
+	jsonByte, err := json.Marshal(responseSlice)
 	if err != nil {
 		h.logBadRequest(res, "can't process POST request (can't encode response)", err)
 		return
 	}
-
+	// пишем заголовки и тело ответа
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
-
 	_, err = res.Write(jsonByte)
 	if err != nil {
 		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
@@ -235,11 +260,11 @@ func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusOK)
 		return
 	}
-	res.WriteHeader(http.StatusInternalServerError)
+	http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
 func (h *Handler) BadRequest(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusBadRequest)
+	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 
 func (h *Handler) checkContentType(req *http.Request, t string) bool {
