@@ -122,7 +122,7 @@ func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		// если ошибки нарушения уникальности, оригинальная ссылка уже существует
-		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) &&
+		if errors.Is(err, e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) &&
 			pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
 			// получаем существующую короткую ссылку
 			l, err := h.linkUse.GetShort(req.Context(), originalUrl)
@@ -164,7 +164,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		// если ошибки нарушения уникальности, оригинальная ссылка уже существует
-		if errors.As(err, &e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
+		if errors.Is(err, e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
 			// получаем существующую короткую ссылку
 			l, err := h.linkUse.GetShort(req.Context(), request.URL)
 			if err != nil || l == nil {
