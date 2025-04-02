@@ -72,16 +72,20 @@ func (h *Handler) GetUserUrls(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "links not found", http.StatusNoContent)
 		return
 	}
+	// добавляем адрес сервера
+	pref := "http://" + conf.GetServAdr() + "/"
+	for k, _ := range links {
+		links[k].ShortURL = pref + links[k].ShortURL
+	}
 	// сериализуем в JSON массив ссылок, uuid получаем пустым, в сериализацию не попадает
 	jsonByte, err := json.Marshal(links)
 	if err != nil {
 		h.logBadRequest(res, "can't process GET request (can't encode response)", err)
 		return
 	}
-	// пишем заголовки ответа
+	// пишем заголовки и тело ответа
 	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	// пишем тело ответа
+	res.WriteHeader(http.StatusOK)
 	_, err = res.Write(jsonByte)
 	if err != nil {
 		h.logBadRequest(res, "can't process GET request (can't write response JSON body)", err)
@@ -281,7 +285,7 @@ func (h *Handler) checkContentType(req *http.Request, t string) bool {
 
 func (h *Handler) logBadRequest(res http.ResponseWriter, mes string, err error) {
 	h.log.Debug(mes, zap.Error(err))
-	http.Error(res, mes, http.StatusBadRequest)
+	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 
 func (h *Handler) writePostResponse(res http.ResponseWriter, data string, successStatus int) {

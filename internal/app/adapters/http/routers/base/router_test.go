@@ -3,14 +3,17 @@ package baserouter
 import (
 	"bytes"
 	"compress/gzip"
+	baseauth "github.com/d5kx/shorturl/internal/app/adapters/auth/base"
+	"github.com/d5kx/shorturl/internal/app/adapters/loggers/zap"
 	usedb "github.com/d5kx/shorturl/internal/app/usecases/db"
+	"github.com/d5kx/shorturl/internal/util/generators/basegen"
+	"github.com/d5kx/shorturl/internal/util/generators/mockgen"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/d5kx/shorturl/internal/util/generators/mockgen"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +21,6 @@ import (
 
 	"github.com/d5kx/shorturl/internal/app/adapters/compress/gzip"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
-	"github.com/d5kx/shorturl/internal/app/adapters/loggers/mock"
-
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/gomock"
 	//"github.com/d5kx/shorturl/internal/app/adapters/storages/mock"
 
@@ -29,7 +30,6 @@ import (
 
 func TestRouter(t *testing.T) {
 	conf.ParseFlags()
-	ml := mocklogger.New()
 
 	// создадим конроллер моков и экземпляр мок-хранилища
 	ctrl := gomock.NewController(t)
@@ -49,15 +49,32 @@ func TestRouter(t *testing.T) {
 	s.EXPECT().SaveTx(gomock.Any(), gomock.Any()).Return(nil)
 	s.EXPECT().SaveTx(gomock.Any(), gomock.Any()).AnyTimes()
 
+	slice := make([][]string, 0)
+	slice = append(slice, []string{"asdfgh", "http://aa.ru"})
+	slice = append(slice, []string{"zxcvbn", "http://bb.ru"})
+
+	s.EXPECT().GetUserUrls(gomock.Any(), "74a2c362-a6a4-4bd0-9529-8a28f81db1fa").Return(slice, nil)
+
+	s.EXPECT().GetUserUrls(gomock.Any(), gomock.Any()).Return(make([][]string, 0), nil)
+	s.EXPECT().GetUserUrls(gomock.Any(), gomock.Any()).AnyTimes()
+
 	ping.EXPECT().Ping(gomock.Any()).Return(true)
 	ping.EXPECT().Ping(gomock.Any()).AnyTimes()
 
-	postUse := usedb.New(ping)
+	//logger := mocklogger.New()
+	logger, err := zaplogger.New()
+	assert.NoError(t, err, "Ошибка создания логгера: %s", err)
 
-	u := uselink.New(s /*mockstor.New()*/, mockgen.New(), ml)
-	c := gzipc.New(ml)
-	p := basehandler.New(u, postUse, ml)
-	f := New(p, c, ml)
+	gen := basegen.New()
+
+	dbUse := usedb.New(ping)
+	linkUse := uselink.New(s, mockgen.New(), logger)
+
+	compressor := gzipc.New(logger)
+	handler := basehandler.New(linkUse, dbUse, logger)
+
+	auth := baseauth.New(gen, logger)
+	f := New(handler, compressor, auth, logger)
 
 	ts := httptest.NewServer(f.rout)
 	defer ts.Close()
@@ -68,6 +85,8 @@ func TestRouter(t *testing.T) {
 		path                string
 		contentType         string
 		body                string
+		cookieName          string
+		cookieValue         string
 		expectedCode        int
 		expectedContentType string
 		expectedBody        string
@@ -100,8 +119,8 @@ func TestRouter(t *testing.T) {
 			contentType:         "text/json",
 			body:                "http://ya.ru",
 			expectedCode:        http.StatusBadRequest,
-			expectedContentType: "",
-			expectedBody:        "",
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        "Bad Request\n",
 		},
 		{
 			name:                "POST: no link in the request body",
@@ -110,19 +129,9 @@ func TestRouter(t *testing.T) {
 			contentType:         "text/plain",
 			body:                "",
 			expectedCode:        http.StatusBadRequest,
-			expectedContentType: "",
-			expectedBody:        "",
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        "Bad Request\n",
 		},
-		/*{
-			name:                "POST: db error emulation",
-			method:              http.MethodPost,
-			path:                "/",
-			contentType:         "text/plain",
-			body:                "db_error",
-			expectedCode:        http.StatusBadRequest,
-			expectedContentType: "",
-			expectedBody:        "",
-		},*/
 		{
 			name:                "POST: api/json valid request",
 			path:                "/api/shorten",
@@ -162,6 +171,32 @@ func TestRouter(t *testing.T) {
 			expectedCode:        http.StatusTemporaryRedirect,
 			expectedContentType: "",
 			expectedLocation:    "http://ya.ru",
+			expectedBody:        "",
+		},
+		{
+			name:                "GET: /api/user/urls valid request",
+			method:              http.MethodGet,
+			path:                "/api/user/urls",
+			contentType:         "application/json",
+			body:                "",
+			cookieName:          "user_id",
+			cookieValue:         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDQ0NDY3MDAsIlVzZXJJRCI6Ijc0YTJjMzYyLWE2YTQtNGJkMC05NTI5LThhMjhmODFkYjFmYSJ9.bRsY2SC6jDVgHEIfhvMuYtFuwXxpVOoylzMjAN8g9ok",
+			expectedCode:        http.StatusOK,
+			expectedContentType: "",
+			expectedLocation:    "",
+			expectedBody:        `[{"short_url":"http://localhost:8080/asdfgh","original_url":"http://aa.ru"},{"short_url":"http://localhost:8080/zxcvbn","original_url":"http://bb.ru"}]`,
+		},
+		//set user_id	{"user_id": "74a2c362-a6a4-4bd0-9529-8a28f81db1fa"}
+		//set cookie	{"cookie": "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDQ0NDY3MDAsIlVzZXJJRCI6Ijc0YTJjMzYyLWE2YTQtNGJkMC05NTI5LThhMjhmODFkYjFmYSJ9.bRsY2SC6jDVgHEIfhvMuYtFuwXxpVOoylzMjAN8g9ok; Path=/; HttpOnly; Secure; SameSite=Strict"}
+		{
+			name:                "GET: /api/user/urls no links",
+			method:              http.MethodGet,
+			path:                "/api/user/urls",
+			contentType:         "application/json",
+			body:                "",
+			expectedCode:        http.StatusNoContent,
+			expectedContentType: "",
+			expectedLocation:    "",
 			expectedBody:        "",
 		},
 		{
@@ -220,6 +255,11 @@ func TestRouter(t *testing.T) {
 			case "POST: api/json valid compressed request", "POST: api/json/batch valid compressed request":
 				req.Header.Set("Content-Encoding", "gzip")
 				req.Header.Set("Accept-Encoding", "gzip")
+			case "GET: /api/user/urls valid request":
+				cookie := &http.Cookie{Name: tc.cookieName, Value: tc.cookieValue, Path: "/"}
+				jar, _ := cookiejar.New(nil)
+				jar.SetCookies(req.URL, []*http.Cookie{cookie})
+				ts.Client().Jar = jar
 			}
 
 			ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
@@ -254,6 +294,11 @@ func TestRouter(t *testing.T) {
 				assert.Equal(t, tc.expectedLocation, resp.Header.Get("Location"), "Адрес переадресации не совпадает с ожидаемым")
 			default:
 				assert.Equal(t, tc.expectedCode, resp.StatusCode, "Код ответа не совпадает с ожидаемым")
+			}
+
+			switch tc.name {
+			case "GET: /api/user/urls valid request":
+				assert.Equal(t, tc.expectedBody, sb.String(), "Тело ответа не совпадает с ожидаемым")
 			}
 		})
 	}

@@ -74,6 +74,7 @@ func (z *ZapLogger) RequestLogging(next http.HandlerFunc) http.HandlerFunc {
 			zap.Int("status", responseData.status),
 			zap.Int("size", responseData.size),
 			zap.Duration("duration", duration),
+			zap.Any("cookies", r.Cookies()),
 		)
 	}
 }
