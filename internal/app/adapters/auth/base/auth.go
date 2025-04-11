@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const TOKEN_EXP = time.Hour * 240
+const TOKEN_EXP = time.Hour * 24000
 const SECRET_KEY = "supersecretkey"
 
 type Auth struct {

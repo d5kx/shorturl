@@ -12,4 +12,5 @@ type Handler interface {
 	PostAPIShortenBatch(res http.ResponseWriter, req *http.Request)
 	BadRequest(res http.ResponseWriter, req *http.Request)
 	PingDB(res http.ResponseWriter, req *http.Request)
+	DeleteUserUrls(res http.ResponseWriter, req *http.Request)
 }

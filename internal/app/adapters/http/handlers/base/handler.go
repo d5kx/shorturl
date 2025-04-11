@@ -150,7 +150,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// десериализуем запрос в структуру модели
+	// десериализируем запрос в структуру модели
 	var request models.RequestJSON
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&request); err != nil {
@@ -258,12 +258,19 @@ func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request
 	}
 }
 
+// DeleteUserUrls помечает ссылки в БД как удаленные для данного пользователя
+func (h *Handler) DeleteUserUrls(res http.ResponseWriter, req *http.Request) {
+	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+}
+
 // PingDB хендлер для проверки соединения с базой данных
 func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
+	// пинганули успешно, шлем 200 ОК, выходим
 	if h.dbUse.Ping(req.Context()) {
 		res.WriteHeader(http.StatusOK)
 		return
 	}
+	// отправляем ошибку
 	http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 

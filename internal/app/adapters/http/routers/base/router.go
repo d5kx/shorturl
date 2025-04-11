@@ -30,26 +30,35 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 	r.auth = authorizer
 
 	r.rout = chi.NewRouter()
-
+	// сохраняет оригинальную ссылку для данного пользователя, принимает в теле запроса, выдает куку авторизации если ее нет
 	// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
 	// curl -v -X POST -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" -d "http://ya.ru" "http://localhost:8080"
-	// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDQyNzE0MzQsIlVzZXJJRCI6IjZiZjBiZTg3LTU2ZjAtNDU0Yi04MTIxLWFjYzY4ZTllNDk0MyJ9.6UcRBP6lbQG3fGfDCCSjbYjgOKbRbwmVkULis_3Tr8o" "http://localhost:8080"
+	// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MzA3Njk2MjUsIlVzZXJJRCI6IjdjYjMyZGM1LWQ3M2YtNDBmZi1iNmRmLTI0NjdlMDg3MzYwMyJ9.du4NRzw32M5X_OCu3UOoF4MV59ZFdVsFZlsUyZMZ1hQ" "http://localhost:8080"
 	r.rout.Post(`/`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.Post))))
 
+	// сохраняет оригинальную ссылку для данного пользователя, принимает в json формате, выдает куку авторизации если ее нет
 	// curl -v -X POST -H "Content-Type:application/json"  -H "Accept-Encoding:gzip" --output "-" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:8080/api/shorten"
 	r.rout.Post(`/api/shorten`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.PostAPIShorten))))
 
+	// сохраняет список оригинальных ссылок для данного пользователя, принимает в json формате, выдает куку авторизации если ее нет
 	// curl -v -X POST -H "Content-Type:application/json" -d "[{\"correlation_id\":\"id=1\",\"original_url\":\"https://ya1.ru\"},{\"correlation_id\":\"id=2\",\"original_url\":\"https://ya2.ru\"}]", "http://localhost:8080/api/shorten/batch"
 	r.rout.Post(`/api/shorten/batch`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.PostAPIShortenBatch))))
 
+	// выдает информации о результатах пинга БД
 	// curl -v -X GET "http://localhost:8080/ping"
 	r.rout.Get(`/ping`, r.log.RequestLogging(r.handler.PingDB))
 
+	// выдает оригинальную ссылку по короткой, отправляет статус 307, редирект по короткой ссылке
 	// curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/EeZjtNwXX"
 	r.rout.Get(`/{id}`, r.log.RequestLogging(r.comp.Do(r.handler.Get)))
 
-	// curl -v -X GET -H "Content-Type:text/plain" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDQyNzE0MzQsIlVzZXJJRCI6IjZiZjBiZTg3LTU2ZjAtNDU0Yi04MTIxLWFjYzY4ZTllNDk0MyJ9.6UcRBP6lbQG3fGfDCCSjbYjgOKbRbwmVkULis_3Tr8o" "http://localhost:8080/api/user/urls"
+	// выдает в json список всех ссылок пользователя
+	// curl -v -X GET -H "Content-Type:text/plain" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MzA3Njk2MjUsIlVzZXJJRCI6IjdjYjMyZGM1LWQ3M2YtNDBmZi1iNmRmLTI0NjdlMDg3MzYwMyJ9.du4NRzw32M5X_OCu3UOoF4MV59ZFdVsFZlsUyZMZ1hQ" "http://localhost:8080/api/user/urls"
 	r.rout.Get(`/api/user/urls`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.GetUserUrls))))
+
+	// помечает ссылки в БД как удаленные для данного пользователя
+	// curl -v -X DELETE -H "Content-Type:text/plain" -d "[\"6qxTVvsy\", \"RTfd56hn\"]" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MzA3Njk2MjUsIlVzZXJJRCI6IjdjYjMyZGM1LWQ3M2YtNDBmZi1iNmRmLTI0NjdlMDg3MzYwMyJ9.du4NRzw32M5X_OCu3UOoF4MV59ZFdVsFZlsUyZMZ1hQ" "http://localhost:8080/api/user/urls"
+	r.rout.Delete(`/api/user/urls`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.DeleteUserUrls))))
 
 	r.rout.NotFound(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))
 	r.rout.MethodNotAllowed(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))

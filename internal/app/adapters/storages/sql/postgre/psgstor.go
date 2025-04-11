@@ -69,7 +69,8 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS public.links (
 			uuid text NOT NULL,
 			short_url text NOT NULL,
-			original_url text NOT NULL
+			original_url text NOT NULL,
+			deleted_flag boolean NOT NULL DEFAULT false
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS original ON public.links (original_url);`
 
