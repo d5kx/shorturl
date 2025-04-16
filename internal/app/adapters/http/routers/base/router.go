@@ -48,7 +48,7 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 	// curl -v -X GET "http://localhost:8080/ping"
 	r.rout.Get(`/ping`, r.log.RequestLogging(r.handler.PingDB))
 
-	// выдает оригинальную ссылку по короткой, отправляет статус 307, редирект по короткой ссылке
+	// выдает оригинальную ссылку по короткой, отправляет статус 307, редирект по оригинальной ссылке
 	// curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/EeZjtNwXX"
 	r.rout.Get(`/{id}`, r.log.RequestLogging(r.comp.Do(r.handler.Get)))
 
@@ -57,7 +57,7 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 	r.rout.Get(`/api/user/urls`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.GetUserUrls))))
 
 	// помечает ссылки в БД как удаленные для данного пользователя
-	// curl -v -X DELETE -H "Content-Type:text/plain" -d "[\"6qxTVvsy\", \"RTfd56hn\"]" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MzA3Njk2MjUsIlVzZXJJRCI6IjdjYjMyZGM1LWQ3M2YtNDBmZi1iNmRmLTI0NjdlMDg3MzYwMyJ9.du4NRzw32M5X_OCu3UOoF4MV59ZFdVsFZlsUyZMZ1hQ" "http://localhost:8080/api/user/urls"
+	// curl -v -X DELETE -H "Content-Type:application/json" -d "[\"6qxTVvsy\", \"RTfd56hn\"]" --cookie "user_id=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MzA3Njk2MjUsIlVzZXJJRCI6IjdjYjMyZGM1LWQ3M2YtNDBmZi1iNmRmLTI0NjdlMDg3MzYwMyJ9.du4NRzw32M5X_OCu3UOoF4MV59ZFdVsFZlsUyZMZ1hQ" "http://localhost:8080/api/user/urls"
 	r.rout.Delete(`/api/user/urls`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.DeleteUserUrls))))
 
 	r.rout.NotFound(r.log.RequestLogging(r.comp.Do(r.handler.BadRequest)))

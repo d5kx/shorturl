@@ -5,7 +5,6 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages"
 	"github.com/d5kx/shorturl/internal/app/conf"
-
 	"go.uber.org/zap"
 
 	"github.com/d5kx/shorturl/internal/app/entities"
@@ -84,7 +83,7 @@ func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
 	return err
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, bool, error) {
 	if s.qdb.IsActive() {
 		return s.qdb.Get(ctx, shortURL)
 	}
@@ -115,7 +114,12 @@ func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
-
+func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {
+	if s.qdb.IsActive() {
+		s.qdb.RemoveUrls(ctx, links)
+	}
+	s.mdb.RemoveUrls(ctx, links)
+}
 func (s *Storage) IsActive() bool {
 	return true
 }

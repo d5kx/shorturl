@@ -48,13 +48,13 @@ func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
 	return nil
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, bool, error) {
 	value, ok := s.db[shortURL]
 
 	if !ok {
-		return "", "", nil
+		return "", "", false, nil
 	}
-	return value.UUID, value.OriginalURL, nil
+	return value.UUID, value.OriginalURL, value.DeletedFlag, nil
 }
 
 func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
@@ -79,6 +79,8 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	delete(s.db, shortURL)
 	return nil
 }
+
+func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {}
 
 func (s *Storage) IsActive() bool {
 	return s.isActive

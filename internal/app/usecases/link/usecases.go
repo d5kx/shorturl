@@ -93,29 +93,30 @@ func (u *UseCases) SaveTx(ctx context.Context, slice []string, userId string) ([
 	return shorts, nil
 }
 
-// Get возвращает указатель на объект ссылки по сокращенному url
+// Get возвращает указатель на заполненный объект ссылки по сокращенному url
 func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error) {
 	var (
 		uuid, originalURL string
+		deletedFlag       bool
 		err               error
 	)
-
-	uuid, originalURL, err = u.db.Get(ctx, shortURL)
-
+	// получаем поля из БД
+	uuid, originalURL, deletedFlag, err = u.db.Get(ctx, shortURL)
 	if err != nil {
 		u.log.Debug("Get() database error", zap.String("sURL", shortURL), zap.Error(err))
 		return nil, e.WrapError("database error", err)
 	}
-
+	// если ссылка в БД не нашлась
 	if originalURL == "" {
 		u.log.Debug("short link does not exist in the database", zap.String("short", shortURL))
 		return nil, nil
 	}
-
+	// возвращаем указатель на заполненный объект ссылки
 	return &link.Link{
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
 		UUID:        uuid,
+		DeletedFlag: deletedFlag,
 	}, nil
 }
 
@@ -161,4 +162,17 @@ func (u *UseCases) GetUserUrls(ctx context.Context, uuid string) ([]*link.Link, 
 	}
 
 	return links, nil
+}
+
+// DeleteUserUrls помечает в БД ссылки пользователя как удаленные
+func (u *UseCases) DeleteUserUrls(ctx context.Context, shortUrls []string, uuid string) error {
+	// создаем и заполняем слайс ссылок для удаления
+	var links []*link.Link
+	for _, v := range shortUrls {
+		links = append(links, &link.Link{UUID: uuid, ShortURL: v})
+	}
+	// передаем слайс ссылок в хранилище для асинхронного удаления
+	u.db.RemoveUrls(ctx, links)
+
+	return nil
 }

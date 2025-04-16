@@ -57,8 +57,8 @@ func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
 	return nil
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
-	return "", "", nil
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, bool, error) {
+	return "", "", false, nil
 }
 func (s *Storage) GetShort(ctx context.Context, shortURL string) (string, string, error) {
 	return "", "", nil
@@ -73,7 +73,7 @@ func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
-
+func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {}
 func (s *Storage) IsActive() bool {
 	return s.isActive
 }

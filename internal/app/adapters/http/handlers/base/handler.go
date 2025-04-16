@@ -38,7 +38,7 @@ func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 	// получаем короткую ссылку из адреса запроса
 	short := strings.TrimPrefix(req.URL.Path, "/")
-	// получаем оригинальный адрес
+	// получаем заполненный объект ссылки
 	l, err := h.linkUse.Get(req.Context(), short)
 	if err != nil || l == nil {
 		h.log.Debug("can't process GET request",
@@ -48,7 +48,14 @@ func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	// пишем ответ, переадресация с новым адресом
+	// если ссылка помечена в БД как удаленная
+	if l.DeletedFlag {
+		res.Header().Set("Content-Type", "text/plain")
+		res.WriteHeader(http.StatusGone)
+		return
+	}
+
+	// пишем ответ, переадресация по оригинальному адресу
 	res.Header().Set("Location", l.OriginalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
@@ -259,8 +266,52 @@ func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request
 }
 
 // DeleteUserUrls помечает ссылки в БД как удаленные для данного пользователя
+// Ссылки приходят в теле запроса в виде json массива
 func (h *Handler) DeleteUserUrls(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	// проверяем содержание требуемого типа в строке Content-type запроса
+	if !h.checkContentType(req, "application/json") {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// декодер json
+	dec := json.NewDecoder(req.Body)
+	// читаем "[" в json массиве
+	_, err := dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+	//var buf bytes.Buffer
+	var shortUrls []string
+	// читаем и декодируем поэлементно json массив
+	for dec.More() {
+		var request string
+		if err := dec.Decode(&request); err != nil {
+			h.logBadRequest(res, "can't decode request JSON body", err)
+			return
+		}
+		shortUrls = append(shortUrls, request)
+		//buf.WriteString(request)
+	}
+	// читаем "]" в json массиве
+	_, err = dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+
+	//получаем user_id из контекста запроса
+	userId := req.Context().Value("user_id")
+	// отправляем массив коротких ссылок на "удаление"
+	err = h.linkUse.DeleteUserUrls(req.Context(), shortUrls, userId.(string))
+	if err != nil {
+		h.logBadRequest(res, "can't process DELETE request", err)
+		return
+	}
+	// пишем заголовки и тело ответа
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusAccepted)
+	//res.Write(buf.Bytes())
 }
 
 // PingDB хендлер для проверки соединения с базой данных
@@ -270,7 +321,7 @@ func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusOK)
 		return
 	}
-	// отправляем ошибку
+	// не пинганули, отправляем ошибку
 	http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 

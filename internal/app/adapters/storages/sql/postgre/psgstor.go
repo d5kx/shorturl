@@ -3,9 +3,11 @@ package postgre
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/entities"
 	"github.com/d5kx/shorturl/internal/util/e"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -16,11 +18,13 @@ type Storage struct {
 	log      loggers.Logger
 	db       *sql.DB
 	isActive bool
+	delChan  chan *link.Link // канал для отложенного удаления ссылок
 }
 
 func New(logger loggers.Logger) *Storage {
 	return &Storage{
-		log: logger,
+		log:     logger,
+		delChan: make(chan *link.Link, 256), // установим каналу удаления буфер в 256 ссылок
 	}
 }
 
@@ -83,6 +87,9 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 		zap.String("query", "CREATE SCHEMA..., CREATE TABLE..., CREATE UNIQUE INDEX..."),
 	)
 
+	// запустим горутину с фоновым удалением ссылок
+	go s.flushDelete()
+
 	return nil
 }
 
@@ -132,20 +139,23 @@ func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
 	return nil
 }
 
-func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, error) {
-	query := `SELECT uuid, original_url FROM  public.links WHERE short_url=$1`
-	var uuid, originalURL string
+func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, bool, error) {
+	query := `SELECT uuid, original_url, deleted_flag FROM  public.links WHERE short_url=$1`
+	var (
+		uuid, originalURL string
+		deletedFlag       bool
+	)
 	row := s.db.QueryRowContext(ctx, query, shortURL)
-	err := row.Scan(&uuid, &originalURL)
+	err := row.Scan(&uuid, &originalURL, &deletedFlag)
 	if err != nil {
 		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
-		return "", "", e.WrapError("unable to execute SQL query", err)
+		return "", "", false, e.WrapError("unable to execute SQL query", err)
 	}
 	s.log.Debug("execute SQL query",
 		zap.String("query", query),
 		zap.String("shortURL", shortURL),
 	)
-	return uuid, originalURL, nil
+	return uuid, originalURL, deletedFlag, nil
 }
 
 func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
@@ -198,12 +208,72 @@ func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, err
 	return result, nil
 }
 
+// IsExist проверяет наличие короткой ссылки в БД
 func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
 	query := `SELECT EXISTS (SELECT 1 FROM  public.links WHERE short_url=$1)`
 	var isExist bool
 	row := s.db.QueryRowContext(ctx, query, shortURL)
 	err := row.Scan(&isExist)
 	return isExist, err
+}
+
+// RemoveUrls ставит ссылки в очередь на асинхронное удаление
+func (s *Storage) RemoveUrls(ctx context.Context, urls []*link.Link) {
+	// отправляем ссылки в очередь на сохранение
+	for _, v := range urls {
+		s.delChan <- v
+	}
+}
+
+// flushDelete с определённым интервалом помечает записи в БД как удаленные
+func (s *Storage) flushDelete() {
+	// будем сохранять сообщения, накопленные за последние 15 секунд
+	ticker := time.NewTicker(15 * time.Second)
+	//слайс для ссылок для удаления
+	var links []*link.Link
+
+	for {
+		select {
+		//в канал поступила ссылка на удаление
+		case data := <-s.delChan:
+			//добавляем ссылку в слайс ссылок для удаления
+			links = append(links, data)
+
+		// сработал таймер
+		case <-ticker.C:
+			s.log.Debug("deleted_ticker", zap.String("time", time.Now().String()))
+			//если слайс ссылок пустой
+			if len(links) == 0 {
+				continue
+			}
+			var (
+				values []string
+				args   []any
+			)
+			// заполняем слайсы параметров и аргументов
+			for i, v := range links {
+				values = append(values, fmt.Sprintf("$%d", i+1))
+				args = append(args, v.UUID)
+			}
+			// составляем строку запроса
+			query := `
+				UPDATE public.links SET deleted_flag = true
+				WHERE uuid IN (` + strings.Join(values, ",") + `);`
+			// обновляем данные в БД
+			_, err := s.db.ExecContext(context.Background(), query, args...)
+			if err != nil {
+				s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+			}
+			if err == nil {
+				s.log.Debug("execute SQL query",
+					zap.String("query", query),
+					zap.Any("args", args),
+				)
+			}
+			// очистим слайс после удаления
+			links = nil
+		}
+	}
 }
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
