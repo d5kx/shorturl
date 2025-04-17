@@ -241,7 +241,7 @@ func (s *Storage) flushDelete() {
 
 		// сработал таймер
 		case <-ticker.C:
-			s.log.Debug("deleted_ticker", zap.String("time", time.Now().String()))
+			//s.log.Debug("deleted_ticker", zap.String("time", time.Now().String()))
 			//если слайс ссылок пустой
 			if len(links) == 0 {
 				continue
@@ -252,14 +252,19 @@ func (s *Storage) flushDelete() {
 			)
 			// заполняем слайсы параметров и аргументов
 			for i, v := range links {
-				values = append(values, fmt.Sprintf("$%d", i+1))
-				args = append(args, v.UUID)
+				base := i * 2
+				values = append(values, fmt.Sprintf("($%d,$%d)", base+1, base+2))
+				args = append(args, v.UUID, v.ShortURL)
 			}
 			// составляем строку запроса
 			query := `
-				UPDATE public.links SET deleted_flag = true
-				WHERE uuid IN (` + strings.Join(values, ",") + `);`
-			// обновляем данные в БД
+				UPDATE public.links AS t
+					SET deleted_flag = true
+						FROM (VALUES` + strings.Join(values, ",") +
+				`) AS v(uuid, short_url)
+					WHERE t.uuid = v.uuid AND t.short_url = v.short_url;`
+
+			// выполняем запрос на обновление данных в БД
 			_, err := s.db.ExecContext(context.Background(), query, args...)
 			if err != nil {
 				s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
