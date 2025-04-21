@@ -247,8 +247,8 @@ func (s *Storage) flushDelete() {
 				continue
 			}
 			var (
-				values []string
-				args   []any
+				values []string // слайс параметров
+				args   []any    // слайс аргументов
 			)
 			// заполняем слайсы параметров и аргументов
 			for i, v := range links {

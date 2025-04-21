@@ -2,15 +2,10 @@ package baserouter
 
 import (
 	"github.com/d5kx/shorturl/internal/app/adapters/auth"
-	"net/http"
-
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers"
 
 	"github.com/d5kx/shorturl/internal/app/adapters/compress"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
-	"github.com/d5kx/shorturl/internal/app/conf"
-	"github.com/d5kx/shorturl/internal/util/e"
-
 	"github.com/go-chi/chi/v5"
 )
 
@@ -66,11 +61,11 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 	return &r
 }
 
+func (r *BaseRouter) Mux() chi.Router {
+	return r.rout
+}
+
 func (r *BaseRouter) Run() error {
-	err := http.ListenAndServe(conf.GetServAdr(), r.rout)
-	if err != nil {
-		return e.WrapError("can't start http servers", err)
-	}
 
 	return nil
 }
