@@ -85,7 +85,7 @@ func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {}
 func (s *Storage) IsActive() bool {
 	return s.isActive
 }
-
+func (s *Storage) Shutdown() error { return nil }
 func (s *Storage) Open(name string) error {
 	s.isActive = true
 	return nil

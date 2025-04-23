@@ -117,13 +117,28 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {
 	if s.qdb.IsActive() {
 		s.qdb.RemoveUrls(ctx, links)
+		return
 	}
 	s.mdb.RemoveUrls(ctx, links)
 }
+
 func (s *Storage) IsActive() bool {
 	return true
 }
+func (s *Storage) Shutdown() error {
+	var err error
+	if s.qdb.IsActive() {
+		return s.qdb.Shutdown()
+	}
+	if s.fdb.IsActive() {
+		err = s.fdb.Shutdown()
+	}
+	if er := s.mdb.Shutdown(); er != nil {
+		err = er
+	}
 
+	return err
+}
 func (s *Storage) Open(name string) error {
 	var err error
 

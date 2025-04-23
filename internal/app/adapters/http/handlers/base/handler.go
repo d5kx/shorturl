@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"github.com/jackc/pgerrcode"
@@ -32,6 +33,13 @@ func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger
 		log:     logger,
 		dbUse:   dbUse,
 	}
+}
+
+func (h *Handler) GetHTTPS(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	fmt.Fprintf(res, "Proudly served with Go and HTTPS!")
+
 }
 
 // Get хендлер для получения оригинального адреса ссылки

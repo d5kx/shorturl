@@ -5,6 +5,7 @@ import (
 )
 
 type Handler interface {
+	GetHTTPS(res http.ResponseWriter, req *http.Request)
 	Get(res http.ResponseWriter, req *http.Request)
 	GetUserUrls(res http.ResponseWriter, req *http.Request)
 	Post(res http.ResponseWriter, req *http.Request)

@@ -2,12 +2,16 @@ package baseserver
 
 import (
 	"context"
+	"crypto/tls"
+	"errors"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/routers"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
+	"github.com/d5kx/shorturl/internal/app/adapters/storages"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"go.uber.org/zap"
 	"net/http"
+	"sync"
 )
 
 type Server struct {
@@ -15,9 +19,14 @@ type Server struct {
 	httpsServer *http.Server
 	router      routers.Router
 	log         loggers.Logger
+	stor        storages.ManagedStorage
 }
 
-func New(router routers.Router, logger loggers.Logger) *Server {
+func New(
+	router routers.Router,
+	logger loggers.Logger,
+	storage storages.ManagedStorage,
+) *Server {
 	return &Server{
 		httpServer: &http.Server{
 			Addr:    conf.GetServAdr(),
@@ -26,13 +35,17 @@ func New(router routers.Router, logger loggers.Logger) *Server {
 		httpsServer: &http.Server{
 			Addr:    conf.GetTSLServAdr(),
 			Handler: router.Mux(),
+			TLSConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
 		},
 		router: router,
 		log:    logger,
+		stor:   storage,
 	}
 }
 
-func (s *Server) Run() chan error {
+func (s *Server) Run(ctx context.Context) error {
 	// канал сбора ошибок
 	errorsCh := make(chan error)
 
@@ -63,32 +76,50 @@ func (s *Server) Run() chan error {
 		}
 	}()
 
-	return errorsCh
-}
-
-func (s *Server) Shutdown(httpDoneCh chan bool, httpsDoneCh chan bool) chan error {
-	// канал сбора ошибок
-	errorsCh := make(chan error)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
-		s.log.Info("HTTP server is shutting down...")
-		s.httpServer.SetKeepAlivesEnabled(false)
-		err := s.httpServer.Shutdown(context.Background())
-		if err != nil {
-			errorsCh <- e.WrapError("can't stop HTTP servers", err)
-		}
-		httpDoneCh <- true
+		<-ctx.Done()
+		s.log.Info("received stop signal")
+
+		func() {
+			defer wg.Done()
+			s.log.Info("storage is shutting down...")
+			err := s.stor.Shutdown()
+			if err != nil {
+				s.log.Info("can't gracefully shutdown storage", zap.Error(err))
+			}
+			s.log.Info("storage is stopped")
+			s.log.Info("HTTP server is shutting down...")
+			s.httpServer.SetKeepAlivesEnabled(false)
+			err = s.httpServer.Shutdown(ctx)
+			if err != nil {
+				s.log.Info("can't gracefully shutdown HTTP servers", zap.Error(err))
+			}
+			s.log.Info("HTTP server is stopped")
+		}()
+
+		func() {
+			defer wg.Done()
+			s.log.Info("HTTPS server is shutting down...")
+			s.httpsServer.SetKeepAlivesEnabled(false)
+			err := s.httpsServer.Shutdown(ctx)
+			if err != nil {
+				s.log.Info("can't gracefully shutdown HTTPS servers", zap.Error(err))
+			}
+			s.log.Info("HTTPS server is stopped")
+		}()
+
 	}()
 
-	go func() {
-		s.log.Info("HTTPS server is shutting down...")
-		s.httpsServer.SetKeepAlivesEnabled(false)
-		err := s.httpsServer.Shutdown(context.Background())
-		if err != nil {
-			errorsCh <- e.WrapError("can't stop HTTPS servers", err)
+	select {
+	case err := <-errorsCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
 		}
-		httpsDoneCh <- true
-	}()
+	}
 
-	return errorsCh
+	wg.Wait()
+	return nil
 }

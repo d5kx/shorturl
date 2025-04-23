@@ -39,6 +39,10 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 	// curl -v -X POST -H "Content-Type:application/json" -d "[{\"correlation_id\":\"id=1\",\"original_url\":\"https://ya1.ru\"},{\"correlation_id\":\"id=2\",\"original_url\":\"https://ya2.ru\"}]", "http://localhost:8080/api/shorten/batch"
 	r.rout.Post(`/api/shorten/batch`, r.log.RequestLogging(r.comp.Do(r.auth.Do(r.handler.PostAPIShortenBatch))))
 
+	// обработчик для тестирования https сервера
+	// curl -Lv  --cacert "C:\go\shorturl\cmd\shortener\sec\cert.pem" https://localhost:4040
+	r.rout.Get(`/`, r.log.RequestLogging(r.handler.GetHTTPS))
+
 	// выдает информации о результатах пинга БД
 	// curl -v -X GET "http://localhost:8080/ping"
 	r.rout.Get(`/ping`, r.log.RequestLogging(r.handler.PingDB))

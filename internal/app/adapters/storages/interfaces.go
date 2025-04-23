@@ -11,4 +11,5 @@ type ManagedStorage interface {
 	Close() error
 	Bootstrap(ctx context.Context) error
 	IsActive() bool
+	Shutdown() error
 }

@@ -15,16 +15,19 @@ import (
 )
 
 type Storage struct {
-	log      loggers.Logger
-	db       *sql.DB
-	isActive bool
-	delChan  chan *link.Link // канал для отложенного удаления ссылок
+	log          loggers.Logger
+	db           *sql.DB
+	isActive     bool
+	delChan      chan *link.Link // Буферизированный канал для отложенного удаления ссылок
+	forceDelChan chan struct{}   // Канал для отправки сигнала принудительного удаления ссылок из очереди
+
 }
 
 func New(logger loggers.Logger) *Storage {
 	return &Storage{
-		log:     logger,
-		delChan: make(chan *link.Link, 256), // установим каналу удаления буфер в 256 ссылок
+		log:          logger,
+		delChan:      make(chan *link.Link, 256), // установим каналу удаления буфер в 256 ссылок
+		forceDelChan: make(chan struct{}),
 	}
 }
 
@@ -242,43 +245,54 @@ func (s *Storage) flushDelete() {
 		// сработал таймер
 		case <-ticker.C:
 			//s.log.Debug("deleted_ticker", zap.String("time", time.Now().String()))
-			//если слайс ссылок пустой
-			if len(links) == 0 {
-				continue
-			}
-			var (
-				values []string // слайс параметров
-				args   []any    // слайс аргументов
-			)
-			// заполняем слайсы параметров и аргументов
-			for i, v := range links {
-				base := i * 2
-				values = append(values, fmt.Sprintf("($%d,$%d)", base+1, base+2))
-				args = append(args, v.UUID, v.ShortURL)
-			}
-			// составляем строку запроса
-			query := `
+			s.deleteLinksFromSlice(links)
+		
+		// пришел сигнал принудительного срабатывания, например из Shutdown
+		case <-s.forceDelChan:
+			//s.log.Debug("deleted_forced", zap.String("time", time.Now().String()))
+			s.deleteLinksFromSlice(links)
+		}
+	}
+}
+
+// deleteLinksFromSlice помечает записи содержащиеся в links как удаленные в БД
+func (s *Storage) deleteLinksFromSlice(links []*link.Link) {
+	if len(links) == 0 {
+		return
+	}
+	var (
+		values []string // слайс параметров
+		args   []any    // слайс аргументов
+	)
+	// заполняем слайсы параметров и аргументов
+	for i, v := range links {
+		base := i * 2
+		values = append(values, fmt.Sprintf("($%d,$%d)", base+1, base+2))
+		args = append(args, v.UUID, v.ShortURL)
+	}
+	// составляем строку запроса
+	query := `
 				UPDATE public.links AS t
 					SET deleted_flag = true
 						FROM (VALUES` + strings.Join(values, ",") +
-				`) AS v(uuid, short_url)
+		`) AS v(uuid, short_url)
 					WHERE t.uuid = v.uuid AND t.short_url = v.short_url;`
 
-			// выполняем запрос на обновление данных в БД
-			_, err := s.db.ExecContext(context.Background(), query, args...)
-			if err != nil {
-				s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
-			}
-			if err == nil {
-				s.log.Debug("execute SQL query",
-					zap.String("query", query),
-					zap.Any("args", args),
-				)
-			}
-			// очистим слайс после удаления
-			links = nil
-		}
+	// выполняем запрос на обновление данных в БД
+	_, err := s.db.ExecContext(context.Background(), query, args...)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query",
+			zap.String("query", query),
+			zap.Error(err))
 	}
+	if err == nil {
+		s.log.Debug("execute SQL query",
+			zap.String("query", query),
+			zap.Any("args", args),
+		)
+	}
+	// очистим слайс после удаления
+	links = nil
 }
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
@@ -287,4 +301,9 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 
 func (s *Storage) IsActive() bool {
 	return s.isActive
+}
+
+func (s *Storage) Shutdown() error {
+	s.forceDelChan <- struct{}{}
+	return nil
 }

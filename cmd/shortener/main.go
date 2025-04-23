@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"github.com/d5kx/shorturl/internal/app/adapters/auth/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/compress/gzip"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
@@ -19,7 +18,6 @@ import (
 	"github.com/d5kx/shorturl/internal/app/usecases/link"
 	"github.com/d5kx/shorturl/internal/util/generators/basegen"
 	"go.uber.org/zap"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -37,75 +35,38 @@ func init() {
 func main() {
 	sl := simplelogger.New()
 
-	zl, err := zaplogger.New()
+	logger, err := zaplogger.New()
 	if err != nil {
 		sl.Fatal("can't run zap loggers", err)
 	}
 
-	m := memstor.New(zl)
-	f := filestor.New(zl)
-	p := postgre.New(zl)
-	manager := storman.New(m, f, p, zl)
-	manager.Open("")
-	defer manager.Close()
-	manager.Bootstrap(context.Background())
+	m := memstor.New(logger)
+	f := filestor.New(logger)
+	p := postgre.New(logger)
+	storage := storman.New(m, f, p, logger)
+	storage.Open("")
+	defer storage.Close()
+	storage.Bootstrap(context.Background())
 
-	gen := basegen.New()
-	linkUse := uselink.New(manager, gen, zl)
+	generator := basegen.New()
+	linkUse := uselink.New(storage, generator, logger)
 	dbUse := usedb.New(p)
-	compressor := gzipc.New(zl)
-	auth := baseauth.New(gen, zl)
+	compressor := gzipc.New(logger)
+	auth := baseauth.New(generator, logger)
 	auth.GenerateTLSCertificate()
 
-	handler := basehandler.New(linkUse, dbUse, zl)
-	router := baserouter.New(handler, compressor, auth, zl)
-	server := baseserver.New(router, zl)
+	handler := basehandler.New(linkUse, dbUse, logger)
+	router := baserouter.New(handler, compressor, auth, logger)
+	server := baseserver.New(router, logger, storage)
 
 	// канал приема системных сигналов
-	quitCh := make(chan os.Signal, 1)
-	signal.Notify(quitCh, os.Interrupt, syscall.SIGTERM)
+	//quitCh := make(chan os.Signal, 1)
+	//signal.Notify(quitCh, os.Interrupt, syscall.SIGTERM)
 
-	errorsCh := make(chan error)
-	httpDoneCh := make(chan bool)
-	httpsDoneCh := make(chan bool)
-	defer func() {
-		close(errorsCh)
-		close(httpDoneCh)
-		close(httpsDoneCh)
-		close(quitCh)
-	}()
-
-	go func() {
-		s := <-quitCh
-		zl.Info("received signal", zap.String("code", s.String()))
-		stopErrCh := server.Shutdown(httpDoneCh, httpsDoneCh)
-		select {
-		case stopErr := <-stopErrCh:
-			zl.Info("can't stop service", zap.Error(stopErr))
-		}
-	}()
-
-	// запускаем сервер с обработкой ошибки с канала
-	errorsCh = server.Run()
-
-	select {
-	case startErr := <-errorsCh:
-		if !errors.Is(startErr, http.ErrServerClosed) {
-			zl.Info("can't run service", zap.Error(startErr))
-		}
-	}
-
-	for i := 0; i < 2; {
-		select {
-		case <-httpDoneCh:
-			zl.Info("HTTP server is stopped")
-			i++
-			//close(httpDoneCh)
-
-		case <-httpsDoneCh:
-			zl.Info("HTTPS server is stopped")
-			i++
-			//close(httpsDoneCh)
-		}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	if err := server.Run(ctx); err != nil {
+		logger.Info("can't run service", zap.Error(err))
+		os.Exit(1)
 	}
 }
