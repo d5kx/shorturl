@@ -4,6 +4,11 @@ type RequestJSON struct {
 	URL string `json:"url"`
 }
 
+type UserLoginJSON struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
 type ResponseJSON struct {
 	Result string `json:"result"`
 }

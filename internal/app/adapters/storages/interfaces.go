@@ -7,6 +7,7 @@ import (
 
 type ManagedStorage interface {
 	storages.LinkStorage
+	storages.UserStorage
 	Open(string) error
 	Close() error
 	Bootstrap(ctx context.Context) error

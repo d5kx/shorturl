@@ -85,7 +85,7 @@ func (mr *MockLinkStorageMockRecorder) GetUserUrls(arg0, arg1 interface{}) *gomo
 // IsExist mocks base method.
 func (m *MockLinkStorage) IsExist(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsExist", arg0, arg1)
+	ret := m.ctrl.Call(m, "LinkExist", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -94,7 +94,7 @@ func (m *MockLinkStorage) IsExist(arg0 context.Context, arg1 string) (bool, erro
 // IsExist indicates an expected call of IsExist.
 func (mr *MockLinkStorageMockRecorder) IsExist(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsExist", reflect.TypeOf((*MockLinkStorage)(nil).IsExist), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LinkExist", reflect.TypeOf((*MockLinkStorage)(nil).IsExist), arg0, arg1)
 }
 
 // Remove mocks base method.

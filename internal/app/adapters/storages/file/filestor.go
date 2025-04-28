@@ -43,7 +43,7 @@ func (s *Storage) Close() error {
 	return err
 }
 
-func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
 	writer := bufio.NewWriter(s.file)
 	if err := json.NewEncoder(writer).Encode(l); err != nil {
 		return e.WrapError("can't encode json when saving to file", err)
@@ -53,7 +53,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	}
 	return nil
 }
-func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
+func (s *Storage) SaveTx(ctx context.Context, slice []*entities.Link) error {
 	return nil
 }
 
@@ -66,14 +66,21 @@ func (s *Storage) GetShort(ctx context.Context, shortURL string) (string, string
 func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, error) {
 	return make([][]string, 0), nil
 }
-func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
+func (s *Storage) LinkExist(ctx context.Context, shortURL string) (bool, error) {
 	return false, nil
 }
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
-func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {}
+func (s *Storage) RemoveUrls(ctx context.Context, links []*entities.Link) {}
+
+func (s *Storage) UserExist(ctx context.Context, login string) (bool, error) { return false, nil }
+func (s *Storage) UserSave(ctx context.Context, user *entities.User) error   { return nil }
+func (s *Storage) UserGet(ctx context.Context, login string) (string, string, error) {
+	return "", "", nil
+}
+
 func (s *Storage) IsActive() bool {
 	return s.isActive
 }

@@ -2,10 +2,12 @@ package basehandler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
+	useuser "github.com/d5kx/shorturl/internal/app/usecases/user"
 	"github.com/d5kx/shorturl/internal/util/e"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -23,13 +25,20 @@ import (
 
 type Handler struct {
 	linkUse *uselink.UseCases
+	userUse *useuser.UseCases
 	dbUse   *usedb.UseCases
 	log     loggers.Logger
 }
 
-func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger) *Handler {
+func New(
+	useLink *uselink.UseCases,
+	useUser *useuser.UseCases,
+	dbUse *usedb.UseCases,
+	logger loggers.Logger,
+) *Handler {
 	return &Handler{
-		linkUse: useCase,
+		linkUse: useLink,
+		userUse: useUser,
 		log:     logger,
 		dbUse:   dbUse,
 	}
@@ -165,7 +174,7 @@ func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// десериализируем запрос в структуру модели
+	// десериализируем запрос в структуру
 	var request models.RequestJSON
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&request); err != nil {
@@ -333,6 +342,123 @@ func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
+// PostAPIUserRegister регистрирует нового пользователя по логину/паролю в json формате,
+// если успешно авторизует, то выдает подписанную куку
+// Формат запроса:
+//
+// POST /api/user/register HTTP/1.1, Content-Type: application/json
+//
+//	{ "login": "<login>", "password": "<password>" }
+//
+// Возможные коды ответа:
+// 200 — пользователь успешно зарегистрирован и аутентифицирован;
+// 400 — неверный формат запроса;
+// 409 — логин уже занят;
+// 500 — внутренняя ошибка сервера.
+func (h *Handler) PostAPIUserRegister(next http.HandlerFunc) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// проверяем содержание требуемого типа в строке Content-type запроса
+		if !h.checkContentType(req, "application/json") {
+			http.Error(res, "", http.StatusBadRequest)
+			return
+		}
+
+		// десериализируем запрос в структуру
+		userJSON, err := decode[models.UserLoginJSON](req)
+		if err != nil {
+			h.logBadRequest(res, "POST request error", err)
+			return
+		}
+
+		// проверяем наличие пользователя с таким логином
+		exist, err := h.userUse.UserExist(req.Context(), userJSON.Login)
+		//ошибка выполнения запроса к БД
+		if err != nil {
+			http.Error(res, "", http.StatusInternalServerError)
+			return
+		}
+		// пользователь уже существует
+		if exist {
+			h.log.Debug("user already exists",
+				zap.Any("user", userJSON),
+			)
+			http.Error(res, "", http.StatusConflict)
+			return
+		}
+		// сохраняем пользователя в БД
+		user, err := h.userUse.UserSave(req.Context(), userJSON.Login, userJSON.Password)
+		if err != nil {
+			http.Error(res, "", http.StatusInternalServerError)
+			h.log.Debug("can't process POST request (user is not saved in the database)", zap.Error(err))
+			return
+		}
+		//захватываем контекст запроса
+		ctx := req.Context()
+		//будем передавать user_id по цепочке middleware через контекст
+		h.log.Debug("send to middleware", zap.String("user_ud", user.UUID))
+		ctx = context.WithValue(ctx, "user_id", user.UUID)
+		// передаём управление следующему хендлеру, который выдаст пользователю подписанную куку
+		next.ServeHTTP(res, req.WithContext(ctx))
+
+		//пользователь успешно зарегистрирован
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
+// PostAPIUserLogin авторизует пользователя по логину/паролю в json формате, выдает подписанную куку.
+// Формат запроса:
+//
+// POST /api/user/login HTTP/1.1, Content-Type: application/json
+//
+//	{ "login": "<login>", "password": "<password>" }
+//
+// Коды ответа:
+// 200 — пользователь успешно аутентифицирован;
+// 400 — неверный формат запроса;
+// 401 — неверная пара логин/пароль;
+// 500 — внутренняя ошибка сервера.
+func (h *Handler) PostAPIUserLogin(next http.HandlerFunc) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// проверяем содержание требуемого типа в строке Content-type запроса
+		if !h.checkContentType(req, "application/json") {
+			http.Error(res, "", http.StatusBadRequest)
+			return
+		}
+
+		// десериализируем запрос в структуру
+		userJSON, err := decode[models.UserLoginJSON](req)
+		if err != nil {
+			h.logBadRequest(res, "POST request error", err)
+			return
+		}
+
+		//извлекаем пользователя из БД
+		user, valid, err := h.userUse.UserAuth(req.Context(), userJSON.Login, userJSON.Password)
+		if err != nil {
+			http.Error(res, "", http.StatusInternalServerError)
+			h.log.Debug("POST request error (user not retrieved from database)", zap.Error(err))
+			return
+		}
+
+		// неверная пара логин/пароль или такого пользователя не существует
+		if !valid {
+			http.Error(res, "", http.StatusUnauthorized)
+			return
+		}
+
+		//захватываем контекст запроса
+		ctx := req.Context()
+		//будем передавать user_id по цепочке middleware через контекст
+		h.log.Debug("send to middleware", zap.String("user_ud", user.UUID))
+		ctx = context.WithValue(ctx, "user_id", user.UUID)
+		// передаём управление следующему хендлеру, который выдаст пользователю подписанную куку
+		next.ServeHTTP(res, req.WithContext(ctx))
+
+		//пользователь успешно авторизирован
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
 func (h *Handler) BadRequest(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
@@ -385,4 +511,21 @@ func (h *Handler) writePostJsonResponse(res http.ResponseWriter, data string, su
 		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
 		return
 	}
+}
+
+// decode декодирует json тело запроса в структуру
+func decode[T any](req *http.Request) (T, error) {
+	var v T
+	if err := json.NewDecoder(req.Body).Decode(&v); err != nil {
+		return v, e.WrapError("can't decode json", err)
+	}
+	return v, nil
+}
+
+// encode кодирует струтуру в json тело ответа
+func encode[T any](res http.ResponseWriter, v T) error {
+	if err := json.NewEncoder(res).Encode(v); err != nil {
+		return e.WrapError("can't encode json", err)
+	}
+	return nil
 }

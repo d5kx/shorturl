@@ -18,15 +18,15 @@ type Storage struct {
 	log          loggers.Logger
 	db           *sql.DB
 	isActive     bool
-	delChan      chan *link.Link // Буферизированный канал для отложенного удаления ссылок
-	forceDelChan chan struct{}   // Канал для отправки сигнала принудительного удаления ссылок из очереди
+	delChan      chan *entities.Link // Буферизированный канал для отложенного удаления ссылок
+	forceDelChan chan struct{}       // Канал для отправки сигнала принудительного удаления ссылок из очереди
 
 }
 
 func New(logger loggers.Logger) *Storage {
 	return &Storage{
 		log:          logger,
-		delChan:      make(chan *link.Link, 256), // установим каналу удаления буфер в 256 ссылок
+		delChan:      make(chan *entities.Link, 256), // установим каналу удаления буфер в 256 ссылок
 		forceDelChan: make(chan struct{}),
 	}
 }
@@ -74,10 +74,18 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 	query := `
 		CREATE SCHEMA IF NOT EXISTS public;
 		CREATE TABLE IF NOT EXISTS public.links (
-			uuid text NOT NULL,
+			id bigserial NOT NULL,
+		    uuid uuid NOT NULL,
 			short_url text NOT NULL,
 			original_url text NOT NULL,
-			deleted_flag boolean NOT NULL DEFAULT false
+			deleted_flag boolean NOT NULL DEFAULT false,
+			PRIMARY KEY (id)
+		);
+		CREATE TABLE IF NOT EXISTS public.users (
+    		uuid uuid NOT NULL,
+    		login text NOT NULL,
+    		passwd text NOT NULL,
+    		PRIMARY KEY (uuid)
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS original ON public.links (original_url);`
 
@@ -96,7 +104,7 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 	return nil
 }
 
-func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
 	query := `
 		INSERT INTO public.links
 		(uuid, short_url, original_url)
@@ -114,7 +122,26 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return nil
 }
 
-func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
+// UserSave сохраняет пользователя в БД
+func (s *Storage) UserSave(ctx context.Context, user *entities.User) error {
+	query := `
+		INSERT INTO public.users
+		(uuid, login, passwd)
+		VALUES ($1, $2, $3)
+		`
+	_, err := s.db.ExecContext(ctx, query, user.UUID, user.Login, user.PasswdHash)
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+		return e.WrapError("unable to execute SQL query", err)
+	}
+	s.log.Debug("execute SQL query",
+		zap.String("query", query),
+		zap.Any("user", user),
+	)
+	return nil
+}
+
+func (s *Storage) SaveTx(ctx context.Context, links []*entities.Link) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		s.log.Debug("unable to start SQL transaction", zap.Error(err))
@@ -159,6 +186,26 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, boo
 		zap.String("shortURL", shortURL),
 	)
 	return uuid, originalURL, deletedFlag, nil
+}
+
+// UserGet достает из БД uuid и хеш пароля пользователя
+func (s *Storage) UserGet(ctx context.Context, login string) (string, string, error) {
+	query := `SELECT uuid, passwd FROM  public.users WHERE login=$1`
+	var (
+		uuid, passwd string
+	)
+	row := s.db.QueryRowContext(ctx, query, login)
+	err := row.Scan(&uuid, &passwd)
+	// другие ошибки
+	if err != nil {
+		s.log.Debug("unable to execute SQL query", zap.String("query", query), zap.Error(err))
+		return "", "", e.WrapError("unable to execute SQL query", err)
+	}
+	s.log.Debug("execute SQL query",
+		zap.String("query", query),
+		zap.String("login", login),
+	)
+	return uuid, passwd, nil
 }
 
 func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
@@ -211,17 +258,34 @@ func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, err
 	return result, nil
 }
 
-// IsExist проверяет наличие короткой ссылки в БД
-func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
+// LinkExist проверяет наличие короткой ссылки в БД
+func (s *Storage) LinkExist(ctx context.Context, shortURL string) (bool, error) {
 	query := `SELECT EXISTS (SELECT 1 FROM  public.links WHERE short_url=$1)`
 	var isExist bool
 	row := s.db.QueryRowContext(ctx, query, shortURL)
 	err := row.Scan(&isExist)
+	s.log.Debug("execute SQL query",
+		zap.String("query", query),
+		zap.String("shortURL", shortURL),
+	)
 	return isExist, err
 }
 
-// RemoveUrls ставит ссылки в очередь на асинхронное удаление
-func (s *Storage) RemoveUrls(ctx context.Context, urls []*link.Link) {
+// UserExist проверяет наличие логина пользователя в БД
+func (s *Storage) UserExist(ctx context.Context, login string) (bool, error) {
+	query := `SELECT EXISTS (SELECT 1 FROM  public.users WHERE login=$1)`
+	var isExist bool
+	row := s.db.QueryRowContext(ctx, query, login)
+	err := row.Scan(&isExist)
+	s.log.Debug("execute SQL query",
+		zap.String("query", query),
+		zap.String("login", login),
+	)
+	return isExist, err
+}
+
+// RemoveUrls ставит ссылки в очередь на асинхронное удаление.
+func (s *Storage) RemoveUrls(ctx context.Context, urls []*entities.Link) {
 	// отправляем ссылки в очередь на сохранение
 	for _, v := range urls {
 		s.delChan <- v
@@ -233,7 +297,7 @@ func (s *Storage) flushDelete() {
 	// будем сохранять сообщения, накопленные за последние 15 секунд
 	ticker := time.NewTicker(15 * time.Second)
 	//слайс для ссылок для удаления
-	var links []*link.Link
+	var links []*entities.Link
 
 	for {
 		select {
@@ -246,7 +310,7 @@ func (s *Storage) flushDelete() {
 		case <-ticker.C:
 			//s.log.Debug("deleted_ticker", zap.String("time", time.Now().String()))
 			s.deleteLinksFromSlice(links)
-		
+
 		// пришел сигнал принудительного срабатывания, например из Shutdown
 		case <-s.forceDelChan:
 			//s.log.Debug("deleted_forced", zap.String("time", time.Now().String()))
@@ -256,7 +320,7 @@ func (s *Storage) flushDelete() {
 }
 
 // deleteLinksFromSlice помечает записи содержащиеся в links как удаленные в БД
-func (s *Storage) deleteLinksFromSlice(links []*link.Link) {
+func (s *Storage) deleteLinksFromSlice(links []*entities.Link) {
 	if len(links) == 0 {
 		return
 	}

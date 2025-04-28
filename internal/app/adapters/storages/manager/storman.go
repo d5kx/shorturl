@@ -53,7 +53,7 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 	return err
 }
 
-func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
 	var err error
 	if s.qdb.IsActive() {
 		return s.qdb.Save(ctx, l)
@@ -69,7 +69,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return err
 }
 
-func (s *Storage) SaveTx(ctx context.Context, links []*link.Link) error {
+func (s *Storage) SaveTx(ctx context.Context, links []*entities.Link) error {
 	var err error
 	if s.qdb.IsActive() {
 		return s.qdb.SaveTx(ctx, links)
@@ -104,17 +104,17 @@ func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, err
 	return s.mdb.GetUserUrls(ctx, uuid)
 }
 
-func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
+func (s *Storage) LinkExist(ctx context.Context, shortURL string) (bool, error) {
 	if s.qdb.IsActive() {
-		return s.qdb.IsExist(ctx, shortURL)
+		return s.qdb.LinkExist(ctx, shortURL)
 	}
-	return s.mdb.IsExist(ctx, shortURL)
+	return s.mdb.LinkExist(ctx, shortURL)
 }
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
-func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {
+func (s *Storage) RemoveUrls(ctx context.Context, links []*entities.Link) {
 	if s.qdb.IsActive() {
 		s.qdb.RemoveUrls(ctx, links)
 		return
@@ -122,6 +122,25 @@ func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {
 	s.mdb.RemoveUrls(ctx, links)
 }
 
+func (s *Storage) UserExist(ctx context.Context, login string) (bool, error) {
+	if s.qdb.IsActive() {
+		return s.qdb.UserExist(ctx, login)
+	}
+	return s.mdb.UserExist(ctx, login)
+}
+
+func (s *Storage) UserSave(ctx context.Context, user *entities.User) error {
+	if s.qdb.IsActive() {
+		return s.qdb.UserSave(ctx, user)
+	}
+	return s.mdb.UserSave(ctx, user)
+}
+func (s *Storage) UserGet(ctx context.Context, login string) (string, string, error) {
+	if s.qdb.IsActive() {
+		return s.qdb.UserGet(ctx, login)
+	}
+	return s.mdb.UserGet(ctx, login)
+}
 func (s *Storage) IsActive() bool {
 	return true
 }

@@ -26,7 +26,7 @@ func New(storage storages.LinkStorage, generator generators.Generator, logger lo
 }
 
 // Save сохраняет в базу данных оригинальный url и идентификатор пользователя,
-// генерирует сокращенный адрес
+// генерирует и возвращает сокращенный адрес.
 func (u *UseCases) Save(ctx context.Context, originalURL string, userId string) (string, error) {
 	var (
 		shortURL string
@@ -36,14 +36,14 @@ func (u *UseCases) Save(ctx context.Context, originalURL string, userId string) 
 	isExist := true
 	for isExist {
 		shortURL = u.gen.ShortURL()
-		isExist, err = u.db.IsExist(ctx, shortURL)
+		isExist, err = u.db.LinkExist(ctx, shortURL)
 		if err != nil {
-			u.log.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
+			u.log.Debug("LinkExist() database error", zap.String("sURL", shortURL), zap.Error(err))
 			return "", e.WrapError("database error", err)
 		}
 	}
 
-	var l = link.Link{
+	var l = entities.Link{
 		UUID:        userId, /*u.gen.UUID()*/
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
@@ -62,20 +62,20 @@ func (u *UseCases) SaveTx(ctx context.Context, slice []string, userId string) ([
 	var (
 		shortURL string
 		err      error
-		links    []*link.Link
+		links    []*entities.Link
 		shorts   []string
 	)
 	for _, v := range slice {
 		isExist := true
 		for isExist {
 			shortURL = u.gen.ShortURL()
-			isExist, err = u.db.IsExist(ctx, shortURL)
+			isExist, err = u.db.LinkExist(ctx, shortURL)
 			if err != nil {
-				u.log.Debug("IsExist() database error", zap.String("sURL", shortURL), zap.Error(err))
+				u.log.Debug("LinkExist() database error", zap.String("sURL", shortURL), zap.Error(err))
 				return nil, e.WrapError("database error", err)
 			}
 		}
-		links = append(links, &link.Link{
+		links = append(links, &entities.Link{
 			UUID:        userId,
 			OriginalURL: v,
 			ShortURL:    shortURL,
@@ -94,7 +94,7 @@ func (u *UseCases) SaveTx(ctx context.Context, slice []string, userId string) ([
 }
 
 // Get возвращает указатель на заполненный объект ссылки по сокращенному url
-func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error) {
+func (u *UseCases) Get(ctx context.Context, shortURL string) (*entities.Link, error) {
 	var (
 		uuid, originalURL string
 		deletedFlag       bool
@@ -112,7 +112,7 @@ func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error)
 		return nil, nil
 	}
 	// возвращаем указатель на заполненный объект ссылки
-	return &link.Link{
+	return &entities.Link{
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
 		UUID:        uuid,
@@ -121,7 +121,7 @@ func (u *UseCases) Get(ctx context.Context, shortURL string) (*link.Link, error)
 }
 
 // GetShort возвращает указатель на объект ссылки по оригинальному url
-func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link, error) {
+func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*entities.Link, error) {
 	var (
 		uuid, shortURL string
 		err            error
@@ -139,7 +139,7 @@ func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link
 		return nil, nil
 	}
 
-	return &link.Link{
+	return &entities.Link{
 		OriginalURL: originalURL,
 		ShortURL:    shortURL,
 		UUID:        uuid,
@@ -147,7 +147,7 @@ func (u *UseCases) GetShort(ctx context.Context, originalURL string) (*link.Link
 }
 
 // GetUserUrls возвращает слайс указателей на объекты ссылки по идентификатору пользователя
-func (u *UseCases) GetUserUrls(ctx context.Context, uuid string) ([]*link.Link, error) {
+func (u *UseCases) GetUserUrls(ctx context.Context, uuid string) ([]*entities.Link, error) {
 	// получаем [][]string с результатами запроса
 	result, err := u.db.GetUserUrls(ctx, uuid)
 	if err != nil {
@@ -155,10 +155,10 @@ func (u *UseCases) GetUserUrls(ctx context.Context, uuid string) ([]*link.Link, 
 		return nil, e.WrapError("database error", err)
 	}
 	// создаем слайс указателей на ссылки
-	links := make([]*link.Link, 0)
+	links := make([]*entities.Link, 0)
 	// заполняем результирующий слайс, uuid преднамеренно оставляем пустым
 	for _, v := range result {
-		links = append(links, &link.Link{UUID: "", ShortURL: v[0], OriginalURL: v[1]})
+		links = append(links, &entities.Link{UUID: "", ShortURL: v[0], OriginalURL: v[1]})
 	}
 
 	return links, nil
@@ -167,9 +167,9 @@ func (u *UseCases) GetUserUrls(ctx context.Context, uuid string) ([]*link.Link, 
 // DeleteUserUrls помечает в БД ссылки пользователя как удаленные
 func (u *UseCases) DeleteUserUrls(ctx context.Context, shortUrls []string, uuid string) error {
 	// создаем и заполняем слайс ссылок для удаления
-	var links []*link.Link
+	var links []*entities.Link
 	for _, v := range shortUrls {
-		links = append(links, &link.Link{UUID: uuid, ShortURL: v})
+		links = append(links, &entities.Link{UUID: uuid, ShortURL: v})
 	}
 	// передаем слайс ссылок в хранилище для асинхронного удаления
 	u.db.RemoveUrls(ctx, links)

@@ -16,6 +16,7 @@ import (
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
 	"github.com/d5kx/shorturl/internal/app/usecases/link"
+	useuser "github.com/d5kx/shorturl/internal/app/usecases/user"
 	"github.com/d5kx/shorturl/internal/util/generators/basegen"
 	"go.uber.org/zap"
 	"os"
@@ -51,13 +52,14 @@ func main() {
 	generator := basegen.New()
 	linkUse := uselink.New(storage, generator, logger)
 	dbUse := usedb.New(p)
+	useUser := useuser.New(storage, generator, logger)
 	compressor := gzipc.New(logger)
 	auth := baseauth.New(generator, logger)
 	auth.GenerateTLSCertificate()
 
-	handler := basehandler.New(linkUse, dbUse, logger)
+	handler := basehandler.New(linkUse, useUser, dbUse, logger)
 	router := baserouter.New(handler, compressor, auth, logger)
-	server := baseserver.New(router, logger, storage)
+	server := baseserver.New(router, storage, logger)
 
 	// канал приема системных сигналов
 	//quitCh := make(chan os.Signal, 1)

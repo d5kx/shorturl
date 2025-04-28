@@ -24,8 +24,8 @@ type Server struct {
 
 func New(
 	router routers.Router,
-	logger loggers.Logger,
 	storage storages.ManagedStorage,
+	logger loggers.Logger,
 ) *Server {
 	return &Server{
 		httpServer: &http.Server{

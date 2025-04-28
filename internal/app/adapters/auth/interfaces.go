@@ -3,5 +3,6 @@ package auth
 import "net/http"
 
 type Authorizer interface {
-	Do(http.HandlerFunc) http.HandlerFunc
+	Do(next http.HandlerFunc) http.HandlerFunc
+	SendUserAuthCookie(next http.HandlerFunc) http.HandlerFunc
 }

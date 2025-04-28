@@ -14,7 +14,7 @@ func New() *Storage {
 	return &Storage{}
 }
 
-func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
 	if l.OriginalURL == "db_error" {
 		return errors.New("db_error")
 	}

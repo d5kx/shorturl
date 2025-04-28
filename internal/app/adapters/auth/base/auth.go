@@ -93,6 +93,27 @@ func (a *Auth) Do(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// SendUserAuthCookie обработчик отправляет подписанную куку пользователю
+func (a *Auth) SendUserAuthCookie(next http.HandlerFunc) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		//получаем user_id из контекста запроса
+		userId := req.Context().Value("user_id")
+		// генерируем подписанный токен
+		userIdJWT, err := a.buildJWTString(userId.(string))
+		if err != nil {
+			a.log.Debug("can't build auth token", zap.Error(err))
+			http.Error(res, "can't build auth token", http.StatusInternalServerError)
+			return
+		}
+		//устанавливаем куку с подписанным токеном
+		a.setAuthCookie(res, userIdJWT)
+		//следующий обработчик
+		if next != nil {
+			next(res, req)
+		}
+	}
+}
+
 // setAuthCookie создает куку и устанавливает её в заголовок ответа
 func (a *Auth) setAuthCookie(res http.ResponseWriter, uuidJWT string) {
 	cookie := &http.Cookie{

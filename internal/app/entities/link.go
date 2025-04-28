@@ -1,4 +1,4 @@
-package link
+package entities
 
 type Link struct {
 	UUID        string `json:"uuid,omitempty"`

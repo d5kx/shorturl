@@ -14,23 +14,23 @@ import (
 )
 
 type Storage struct {
-	db       map[string]*link.Link
+	db       map[string]*entities.Link
 	log      loggers.Logger
 	isActive bool
 }
 
-func (s *Storage) GetDB() map[string]*link.Link {
+func (s *Storage) GetDB() map[string]*entities.Link {
 	return s.db
 }
 
 func New(logger loggers.Logger) *Storage {
 	return &Storage{
-		db:  make(map[string]*link.Link),
+		db:  make(map[string]*entities.Link),
 		log: logger,
 	}
 }
 
-func (s *Storage) Save(ctx context.Context, l *link.Link) error {
+func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
 	for _, v := range s.db {
 		if v.OriginalURL == l.OriginalURL {
 			return e.ErrSaveUniqueViolation
@@ -41,7 +41,7 @@ func (s *Storage) Save(ctx context.Context, l *link.Link) error {
 	return nil
 }
 
-func (s *Storage) SaveTx(ctx context.Context, slice []*link.Link) error {
+func (s *Storage) SaveTx(ctx context.Context, slice []*entities.Link) error {
 	for _, v := range slice {
 		s.Save(ctx, v)
 	}
@@ -70,7 +70,7 @@ func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, err
 	return make([][]string, 0), nil
 }
 
-func (s *Storage) IsExist(ctx context.Context, shortURL string) (bool, error) {
+func (s *Storage) LinkExist(ctx context.Context, shortURL string) (bool, error) {
 	_, ok := s.db[shortURL]
 	return ok, nil
 }
@@ -80,10 +80,20 @@ func (s *Storage) Remove(ctx context.Context, shortURL string) error {
 	return nil
 }
 
-func (s *Storage) RemoveUrls(ctx context.Context, links []*link.Link) {}
+func (s *Storage) RemoveUrls(ctx context.Context, links []*entities.Link) {}
 
 func (s *Storage) IsActive() bool {
 	return s.isActive
+}
+
+func (s *Storage) UserExist(ctx context.Context, login string) (bool, error) {
+	return false, nil
+}
+func (s *Storage) UserSave(ctx context.Context, user *entities.User) error {
+	return nil
+}
+func (s *Storage) UserGet(ctx context.Context, login string) (string, string, error) {
+	return "", "", nil
 }
 func (s *Storage) Shutdown() error { return nil }
 func (s *Storage) Open(name string) error {
@@ -109,7 +119,7 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		data := scanner.Bytes()
-		l := link.Link{}
+		l := entities.Link{}
 		err = json.Unmarshal(data, &l)
 		if err != nil {
 			return e.WrapError("can't decode json when reading from file", err)
