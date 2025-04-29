@@ -85,19 +85,20 @@ func (s *Server) Run(ctx context.Context) error {
 
 		func() {
 			defer wg.Done()
-			s.log.Info("storage is shutting down...")
-			err := s.stor.Shutdown()
-			if err != nil {
-				s.log.Info("can't gracefully shutdown storage", zap.Error(err))
-			}
 			s.log.Info("storage is stopped")
 			s.log.Info("HTTP server is shutting down...")
 			s.httpServer.SetKeepAlivesEnabled(false)
-			err = s.httpServer.Shutdown(ctx)
+			err := s.httpServer.Shutdown(ctx)
 			if err != nil {
 				s.log.Info("can't gracefully shutdown HTTP servers", zap.Error(err))
 			}
 			s.log.Info("HTTP server is stopped")
+
+			s.log.Info("storage is shutting down...")
+			err = s.stor.Shutdown(ctx)
+			if err != nil {
+				s.log.Info("can't gracefully shutdown storage", zap.Error(err))
+			}
 		}()
 
 		func() {

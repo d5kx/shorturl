@@ -12,16 +12,14 @@ import (
 
 type Storage struct {
 	mdb    storages.ManagedStorage
-	fdb    storages.ManagedStorage
 	qdb    storages.ManagedStorage
 	logger loggers.Logger
 }
 
-func New(mstor, fstor, qstor storages.ManagedStorage, logger loggers.Logger) *Storage {
+func New(mstor, qstor storages.ManagedStorage, logger loggers.Logger) *Storage {
 
 	return &Storage{
 		mdb:    mstor,
-		fdb:    fstor,
 		qdb:    qstor,
 		logger: logger,
 	}
@@ -37,13 +35,6 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 		}
 	}
 
-	if s.fdb.IsActive() {
-		err = s.fdb.Bootstrap(context.Background())
-		if err != nil {
-			s.logger.Info("can't bootstrap file db", zap.Error(err))
-		}
-	}
-
 	if s.mdb.IsActive() {
 		err = s.mdb.Bootstrap(ctx)
 		if err != nil {
@@ -54,33 +45,23 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 }
 
 func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
-	var err error
 	if s.qdb.IsActive() {
 		return s.qdb.Save(ctx, l)
 	}
-
-	if s.fdb.IsActive() {
-		err = s.mdb.Save(ctx, l)
-		if err != nil {
-			return err
-		}
-		err = s.fdb.Save(ctx, l)
+	if s.mdb.IsActive() {
+		return s.mdb.Save(ctx, l)
 	}
-	return err
+	return nil
 }
 
 func (s *Storage) SaveTx(ctx context.Context, links []*entities.Link) error {
-	var err error
 	if s.qdb.IsActive() {
 		return s.qdb.SaveTx(ctx, links)
 	}
-
-	if s.fdb.IsActive() {
-		err = s.fdb.SaveTx(ctx, links)
+	if s.mdb.IsActive() {
+		return s.mdb.SaveTx(ctx, links)
 	}
-	err = s.mdb.SaveTx(ctx, links)
-
-	return err
+	return nil
 }
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, bool, error) {
@@ -144,18 +125,14 @@ func (s *Storage) UserGet(ctx context.Context, login string) (string, string, er
 func (s *Storage) IsActive() bool {
 	return true
 }
-func (s *Storage) Shutdown() error {
+func (s *Storage) Shutdown(ctx context.Context) error {
 	var err error
 	if s.qdb.IsActive() {
-		return s.qdb.Shutdown()
+		err = s.qdb.Shutdown(ctx)
 	}
-	if s.fdb.IsActive() {
-		err = s.fdb.Shutdown()
+	if s.mdb.IsActive() {
+		err = s.mdb.Shutdown(ctx)
 	}
-	if er := s.mdb.Shutdown(); er != nil {
-		err = er
-	}
-
 	return err
 }
 func (s *Storage) Open(name string) error {
@@ -168,13 +145,6 @@ func (s *Storage) Open(name string) error {
 		}
 	}
 
-	if !s.qdb.IsActive() && conf.GetDBFileName() != "" {
-		err = s.fdb.Open(conf.GetDBFileName())
-		if err != nil {
-			s.logger.Info("can't open DB file", zap.Error(err))
-		}
-	}
-
 	if !s.qdb.IsActive() {
 		err = s.mdb.Open("")
 		if err != nil {
@@ -184,27 +154,19 @@ func (s *Storage) Open(name string) error {
 
 	s.logger.Info("storages used",
 		zap.Bool("mem", s.mdb.IsActive()),
-		zap.Bool("file", s.fdb.IsActive()),
 		zap.Bool("sql", s.qdb.IsActive()),
 	)
 	return err
 }
 
 func (s *Storage) Close() error {
-	var err error
-
 	if s.qdb.IsActive() {
-		err = s.qdb.Close()
+		err := s.qdb.Close()
 		if err != nil {
 			s.logger.Info("can't close connection to PostgreSQL db", zap.Error(err))
 		}
+		return err
 	}
 
-	if s.fdb.IsActive() {
-		err = s.fdb.Close()
-		if err != nil {
-			s.logger.Info("can't close connection to file db", zap.Error(err))
-		}
-	}
-	return err
+	return nil
 }

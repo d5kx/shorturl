@@ -367,7 +367,8 @@ func (s *Storage) IsActive() bool {
 	return s.isActive
 }
 
-func (s *Storage) Shutdown() error {
+func (s *Storage) Shutdown(ctx context.Context) error {
+	// посылаем сигнал на удаление ссылок из очереди и очищение очереди
 	s.forceDelChan <- struct{}{}
 	return nil
 }

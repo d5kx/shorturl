@@ -10,7 +10,7 @@ type ManagedStorage interface {
 	storages.UserStorage
 	Open(string) error
 	Close() error
-	Bootstrap(ctx context.Context) error
 	IsActive() bool
-	Shutdown() error
+	Bootstrap(ctx context.Context) error
+	Shutdown(ctx context.Context) error
 }

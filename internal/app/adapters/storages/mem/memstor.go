@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"go.uber.org/zap"
 	"os"
+	"reflect"
+	"sync"
 
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers"
 	"github.com/d5kx/shorturl/internal/app/conf"
@@ -14,30 +16,32 @@ import (
 )
 
 type Storage struct {
-	db       map[string]*entities.Link
+	linksDB  map[string]*entities.Link //Хранилище ссылок
+	usersDB  map[string]*entities.User //Хранилище пользователей
 	log      loggers.Logger
 	isActive bool
 }
 
 func (s *Storage) GetDB() map[string]*entities.Link {
-	return s.db
+	return s.linksDB
 }
 
 func New(logger loggers.Logger) *Storage {
 	return &Storage{
-		db:  make(map[string]*entities.Link),
-		log: logger,
+		linksDB: make(map[string]*entities.Link),
+		usersDB: make(map[string]*entities.User),
+		log:     logger,
 	}
 }
 
 func (s *Storage) Save(ctx context.Context, l *entities.Link) error {
-	for _, v := range s.db {
+	for _, v := range s.linksDB {
 		if v.OriginalURL == l.OriginalURL {
 			return e.ErrSaveUniqueViolation
 		}
 	}
 
-	s.db[l.ShortURL] = l /*l.OriginalURL*/
+	s.linksDB[l.ShortURL] = l /*l.OriginalURL*/
 	return nil
 }
 
@@ -49,7 +53,7 @@ func (s *Storage) SaveTx(ctx context.Context, slice []*entities.Link) error {
 }
 
 func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, bool, error) {
-	value, ok := s.db[shortURL]
+	value, ok := s.linksDB[shortURL]
 
 	if !ok {
 		return "", "", false, nil
@@ -58,7 +62,7 @@ func (s *Storage) Get(ctx context.Context, shortURL string) (string, string, boo
 }
 
 func (s *Storage) GetShort(ctx context.Context, originalURL string) (string, string, error) {
-	for _, v := range s.db {
+	for _, v := range s.linksDB {
 		if v.OriginalURL == originalURL {
 			return v.UUID, v.ShortURL, nil
 		}
@@ -71,12 +75,12 @@ func (s *Storage) GetUserUrls(ctx context.Context, uuid string) ([][]string, err
 }
 
 func (s *Storage) LinkExist(ctx context.Context, shortURL string) (bool, error) {
-	_, ok := s.db[shortURL]
+	_, ok := s.linksDB[shortURL]
 	return ok, nil
 }
 
 func (s *Storage) Remove(ctx context.Context, shortURL string) error {
-	delete(s.db, shortURL)
+	delete(s.linksDB, shortURL)
 	return nil
 }
 
@@ -95,7 +99,23 @@ func (s *Storage) UserSave(ctx context.Context, user *entities.User) error {
 func (s *Storage) UserGet(ctx context.Context, login string) (string, string, error) {
 	return "", "", nil
 }
-func (s *Storage) Shutdown() error { return nil }
+func (s *Storage) Shutdown(ctx context.Context) error {
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// записываем файл со ссылками
+	go func() {
+		writeMapToFile[entities.Link](conf.GetDBFileName(), s.linksDB, s.log, &wg)
+	}()
+
+	// записываем файл с пользователями
+	go func() {
+		writeMapToFile[entities.User](conf.GetUsersFileName(), s.usersDB, s.log, &wg)
+	}()
+
+	wg.Wait()
+	return nil
+}
 func (s *Storage) Open(name string) error {
 	s.isActive = true
 	return nil
@@ -106,32 +126,90 @@ func (s *Storage) Close() error {
 }
 
 func (s *Storage) Bootstrap(ctx context.Context) error {
-	file, err := os.OpenFile(conf.GetDBFileName(), os.O_RDONLY, 0666)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	//загружаем файл со ссылками
+	go func() {
+		readFileToMap[entities.Link](conf.GetDBFileName(), s.linksDB, 1, s.log, &wg)
+	}()
+
+	wg.Wait()
+	return nil
+}
+
+// writeMapToFile дженерик, записывает содержимое мапы в файл
+func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logger, wg *sync.WaitGroup) {
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0666)
+
 	if err != nil {
-		return e.WrapError("can't open file "+conf.GetDBFileName(), err)
+		log.Debug("can't open file", zap.String("file", fileName), err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			s.log.Info("file closing error when load from file", zap.Error(err))
+			log.Info("file closing error when save file", zap.String("file", fileName), zap.Error(err))
 		}
+		wg.Done()
 	}()
-	var i int
+	// создаем декодер и врайтер
+	writer := bufio.NewWriter(file)
+	encoder := json.NewEncoder(writer)
+
+	// пишем в файл слайс ссылок
+	var c int //Счетчик сохраненных записей
+	for i, _ := range data {
+		if err = encoder.Encode(data[i]); err != nil {
+			log.Debug("can't encode json when saving to file", zap.String("file", fileName), err)
+		}
+		c++
+	}
+	//сбрасываем буфер в файл
+	if err = writer.Flush(); err != nil {
+		log.Info("error in Flush() when saving to file ", zap.String("file", fileName), zap.Error(err))
+	}
+	// логируем результаты записи в файл
+	if err == nil {
+		log.Info("file was written without errors", zap.String("file", conf.GetDBFileName()), zap.Int("records", c))
+	} else {
+		log.Info("file was written with errors", zap.String("file", conf.GetDBFileName()), zap.Error(err))
+	}
+}
+
+// readFileToMap дженерик, читает содержимое файла в мапу, использует рефлексию,
+// keyField - индекс поля структуры для ключа мапы
+func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, log loggers.Logger, wg *sync.WaitGroup) {
+
+	file, err := os.OpenFile(fileName, os.O_RDONLY, 0666)
+	if err != nil {
+		log.Info("can't open file", zap.String("file", fileName), zap.Error(err))
+	}
+	defer func() {
+		if err = file.Close(); err != nil {
+			log.Info("file closing error when load from file", zap.String("file", fileName), zap.Error(err))
+		}
+		wg.Done()
+	}()
+	var i int // Счетчик прочитанных записей
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		data := scanner.Bytes()
-		l := entities.Link{}
+		var l T
 		err = json.Unmarshal(data, &l)
 		if err != nil {
-			return e.WrapError("can't decode json when reading from file", err)
+			log.Debug("can't decode json when reading from file", zap.String("file", fileName), err)
 		}
-		s.db[l.ShortURL] = &l /*.OriginalURL*/
+		v := reflect.ValueOf(l).Field(keyField)
+		dataMap[v.String()] = &l
 		i++
 	}
 
 	if err := scanner.Err(); err != nil {
-		s.log.Info("file scanning error when loaf from file", zap.Error(err))
+		log.Info("file scanning error when loaf from file", zap.String("file", fileName), zap.Error(err))
 	}
-	s.log.Info("loaded from file", zap.Int("records", i))
-
-	return nil
+	// логируем результаты загрузки из файла
+	if err == nil {
+		log.Info("file was loaded without errors", zap.String("file", fileName), zap.Int("records", i))
+	} else {
+		log.Info("file was loaded with errors", zap.String("file", fileName), zap.Error(err))
+	}
 }

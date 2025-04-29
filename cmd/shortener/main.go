@@ -9,7 +9,6 @@ import (
 	"github.com/d5kx/shorturl/internal/app/adapters/http/servers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/simple"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/zap"
-	"github.com/d5kx/shorturl/internal/app/adapters/storages/file"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/manager"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mem"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/sql/postgre"
@@ -28,6 +27,7 @@ import (
 // mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases LinkStorage,DB
 
 // go run main.go -l debug -f tmp/short-url-db.json -d "host=localhost port=5432 user=postgres password=820610 dbname=shorturl sslmode=disable"
+// go run main.go -l debug -f tmp/short-url-db.json -fusers tmp/users-db.json
 
 func init() {
 	conf.ParseFlags()
@@ -42,9 +42,8 @@ func main() {
 	}
 
 	m := memstor.New(logger)
-	f := filestor.New(logger)
 	p := postgre.New(logger)
-	storage := storman.New(m, f, p, logger)
+	storage := storman.New(m, p, logger)
 	storage.Open("")
 	defer storage.Close()
 	storage.Bootstrap(context.Background())
