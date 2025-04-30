@@ -19,12 +19,12 @@ type Server struct {
 	httpsServer *http.Server
 	router      routers.Router
 	log         loggers.Logger
-	stor        storages.ManagedStorage
+	storage     storages.CommonStorage
 }
 
 func New(
 	router routers.Router,
-	storage storages.ManagedStorage,
+	storage storages.CommonStorage,
 	logger loggers.Logger,
 ) *Server {
 	return &Server{
@@ -39,9 +39,9 @@ func New(
 				MinVersion: tls.VersionTLS12,
 			},
 		},
-		router: router,
-		log:    logger,
-		stor:   storage,
+		router:  router,
+		log:     logger,
+		storage: storage,
 	}
 }
 
@@ -80,12 +80,12 @@ func (s *Server) Run(ctx context.Context) error {
 	wg.Add(2)
 
 	go func() {
+		//ловим стоп-сигнал с канала контекста
 		<-ctx.Done()
 		s.log.Info("received stop signal")
-
+		//останавливаем http сервер
 		func() {
 			defer wg.Done()
-			s.log.Info("storage is stopped")
 			s.log.Info("HTTP server is shutting down...")
 			s.httpServer.SetKeepAlivesEnabled(false)
 			err := s.httpServer.Shutdown(ctx)
@@ -95,12 +95,13 @@ func (s *Server) Run(ctx context.Context) error {
 			s.log.Info("HTTP server is stopped")
 
 			s.log.Info("storage is shutting down...")
-			err = s.stor.Shutdown(ctx)
+			err = s.storage.Shutdown(ctx)
 			if err != nil {
 				s.log.Info("can't gracefully shutdown storage", zap.Error(err))
 			}
+			s.log.Info("storage is stopped")
 		}()
-
+		//останавливаем https сервер
 		func() {
 			defer wg.Done()
 			s.log.Info("HTTPS server is shutting down...")
@@ -113,14 +114,14 @@ func (s *Server) Run(ctx context.Context) error {
 		}()
 
 	}()
-
+	//обрабатываем ошибки с канала
 	select {
 	case err := <-errorsCh:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 	}
-
+	//ждем завершения горутин остановки серверов
 	wg.Wait()
 	return nil
 }

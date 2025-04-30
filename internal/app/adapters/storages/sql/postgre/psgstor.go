@@ -35,8 +35,8 @@ func (s *Storage) Open(connectionString string) error {
 	var err error
 	s.db, err = sql.Open("pgx", connectionString)
 	if err != nil {
-		s.log.Info("DB not open", zap.Error(err))
-		return e.WrapError("can't open DB", err)
+		s.log.Info("can't connect to PostgreSQL db", zap.Error(err))
+		return e.WrapError("can't connect to PostgreSQL db", err)
 	}
 	s.db.SetMaxOpenConns(100)
 	s.db.SetMaxIdleConns(100)
@@ -52,7 +52,8 @@ func (s *Storage) Close() error {
 	err := s.db.Close()
 	if err != nil {
 		s.log.Info("DB not close", zap.Error(err))
-		return e.WrapError("can't close DB", err)
+		s.log.Info("can't close connection to PostgreSQL", zap.Error(err))
+		return e.WrapError("can't close connection to PostgreSQL", err)
 	}
 	return nil
 }
@@ -81,13 +82,15 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 			deleted_flag boolean NOT NULL DEFAULT false,
 			PRIMARY KEY (id)
 		);
+		CREATE UNIQUE INDEX IF NOT EXISTS original ON public.links (original_url);
+		
 		CREATE TABLE IF NOT EXISTS public.users (
     		uuid uuid NOT NULL,
     		login text NOT NULL,
     		passwd text NOT NULL,
     		PRIMARY KEY (uuid)
 		);
-		CREATE UNIQUE INDEX IF NOT EXISTS original ON public.links (original_url);`
+		CREATE UNIQUE INDEX IF NOT EXISTS login ON public.users (login);`
 
 	_, err := s.db.ExecContext(ctx, query)
 	if err != nil {

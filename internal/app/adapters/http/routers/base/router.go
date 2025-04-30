@@ -45,11 +45,11 @@ func New(handler handlers.Handler, compressor compress.Compressor, authorizer au
 
 	// авторизирует пользователя по логину/паролю в json формате, выдает подписанную куку
 	// curl -v -X POST -H "Content-Type:application/json" -d "{\"login\": \"striped\",\"password\": \"820610\"}" "http://localhost:8080/api/user/login"
+	// curl -v -X POST -H "Content-Type:application/json" -d "{\"login\": \"striped\",\"password\": \"820610\"}" --cacert "C:\go\shorturl\cmd\shortener\sec\cert.pem" "https://localhost:4040/api/user/register"
+
 	r.rout.Post(`/api/user/login`, r.log.RequestLogging(r.comp.Do(r.handler.PostAPIUserLogin(r.auth.SendUserAuthCookie(nil)))))
 
-	// обработчик для тестирования https сервера
-	// curl -Lv  --cacert "C:\go\shorturl\cmd\shortener\sec\cert.pem" https://localhost:4040
-	r.rout.Get(`/`, r.log.RequestLogging(r.handler.GetHTTPS))
+	// регистрирует пользователя по логину/паролю в json формате через https, выдает подписанную куку
 
 	// выдает информации о результатах пинга БД
 	// curl -v -X GET "http://localhost:8080/ping"

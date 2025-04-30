@@ -43,22 +43,24 @@ func main() {
 
 	m := memstor.New(logger)
 	p := postgre.New(logger)
+
 	storage := storman.New(m, p, logger)
-	storage.Open("")
+	storage.Open()
 	defer storage.Close()
 	storage.Bootstrap(context.Background())
+	workingStorage := storage.WorkingStorage()
 
 	generator := basegen.New()
-	linkUse := uselink.New(storage, generator, logger)
-	dbUse := usedb.New(p)
-	useUser := useuser.New(storage, generator, logger)
+	useLink := uselink.New(workingStorage, generator, logger)
+	useDB := usedb.New(p)
+	useUser := useuser.New(workingStorage, generator, logger)
 	compressor := gzipc.New(logger)
 	auth := baseauth.New(generator, logger)
 	auth.GenerateTLSCertificate()
 
-	handler := basehandler.New(linkUse, useUser, dbUse, logger)
+	handler := basehandler.New(useLink, useUser, useDB, logger)
 	router := baserouter.New(handler, compressor, auth, logger)
-	server := baseserver.New(router, storage, logger)
+	server := baseserver.New(router, workingStorage, logger)
 
 	// канал приема системных сигналов
 	//quitCh := make(chan os.Signal, 1)

@@ -91,9 +91,12 @@ func (s *Storage) IsActive() bool {
 }
 
 func (s *Storage) UserExist(ctx context.Context, login string) (bool, error) {
-	return false, nil
+	_, ok := s.usersDB[login]
+	return ok, nil
 }
+
 func (s *Storage) UserSave(ctx context.Context, user *entities.User) error {
+	s.usersDB[user.Login] = user
 	return nil
 }
 func (s *Storage) UserGet(ctx context.Context, login string) (string, string, error) {
@@ -105,14 +108,16 @@ func (s *Storage) Shutdown(ctx context.Context) error {
 
 	// записываем файл со ссылками
 	go func() {
-		writeMapToFile[entities.Link](conf.GetDBFileName(), s.linksDB, s.log, &wg)
+		defer wg.Done()
+		writeMapToFile[entities.Link](conf.GetDBFileName(), s.linksDB, s.log)
 	}()
 
 	// записываем файл с пользователями
 	go func() {
-		writeMapToFile[entities.User](conf.GetUsersFileName(), s.usersDB, s.log, &wg)
+		defer wg.Done()
+		writeMapToFile[entities.User](conf.GetUsersFileName(), s.usersDB, s.log)
 	}()
-
+	//ждем все записывающие горутины
 	wg.Wait()
 	return nil
 }
@@ -127,19 +132,25 @@ func (s *Storage) Close() error {
 
 func (s *Storage) Bootstrap(ctx context.Context) error {
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 
 	//загружаем файл со ссылками
 	go func() {
-		readFileToMap[entities.Link](conf.GetDBFileName(), s.linksDB, 1, s.log, &wg)
+		defer wg.Done()
+		readFileToMap[entities.Link](conf.GetDBFileName(), s.linksDB, 1, s.log)
 	}()
-
+	//загружаем файл с пользователями
+	go func() {
+		defer wg.Done()
+		readFileToMap[entities.User](conf.GetUsersFileName(), s.usersDB, 1, s.log)
+	}()
+	//ждем читающие горутины
 	wg.Wait()
 	return nil
 }
 
 // writeMapToFile дженерик, записывает содержимое мапы в файл
-func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logger, wg *sync.WaitGroup) {
+func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logger) {
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0666)
 
 	if err != nil {
@@ -149,7 +160,6 @@ func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logg
 		if err := file.Close(); err != nil {
 			log.Info("file closing error when save file", zap.String("file", fileName), zap.Error(err))
 		}
-		wg.Done()
 	}()
 	// создаем декодер и врайтер
 	writer := bufio.NewWriter(file)
@@ -177,7 +187,7 @@ func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logg
 
 // readFileToMap дженерик, читает содержимое файла в мапу, использует рефлексию,
 // keyField - индекс поля структуры для ключа мапы
-func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, log loggers.Logger, wg *sync.WaitGroup) {
+func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, log loggers.Logger) {
 
 	file, err := os.OpenFile(fileName, os.O_RDONLY, 0666)
 	if err != nil {
@@ -187,7 +197,6 @@ func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, 
 		if err = file.Close(); err != nil {
 			log.Info("file closing error when load from file", zap.String("file", fileName), zap.Error(err))
 		}
-		wg.Done()
 	}()
 	var i int // Счетчик прочитанных записей
 	scanner := bufio.NewScanner(file)
