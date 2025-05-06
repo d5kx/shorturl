@@ -2,35 +2,32 @@ package main
 
 import (
 	"context"
+	"github.com/d5kx/shorturl/internal/app/adapters/auth/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/compress/gzip"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/handlers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/routers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/http/servers/base"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/simple"
 	"github.com/d5kx/shorturl/internal/app/adapters/loggers/zap"
-	filestor "github.com/d5kx/shorturl/internal/app/adapters/storages/file"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/manager"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/mem"
 	"github.com/d5kx/shorturl/internal/app/adapters/storages/sql/postgre"
 	"github.com/d5kx/shorturl/internal/app/conf"
 	"github.com/d5kx/shorturl/internal/app/usecases/db"
 	"github.com/d5kx/shorturl/internal/app/usecases/link"
+	useuser "github.com/d5kx/shorturl/internal/app/usecases/user"
 	"github.com/d5kx/shorturl/internal/util/generators/basegen"
+	"go.uber.org/zap"
+	"os"
+	"os/signal"
+	"syscall"
 )
-
-// curl -v -X POST -H "Content-Type:text/plain" -d "http://ya.ru" "http://localhost:8080"
-// curl -v -X POST -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" -d "http://ya.ru" "http://localhost:8080"
-// curl -v -X POST -H "Content-Type:application/json"  -H "Accept-Encoding:gzip" --output "-" -d "{\"url\": \"https://practicum.yandex.ru\"}" "http://localhost:9090/api/shorten"
-// curl -v -X GET -H "Content-Type:text/plain" -H "Accept-Encoding:gzip" --output "-" "http://localhost:8080/GlTBlr"
-// curl -v -X GET "http://localhost:8080/ping"
-
-// shortenertest-windows-amd64 -test.v -test.run=^TestIteration1$ -binary-path=C:\go\shorturl\cmd\shortener\shortener.exe
-// shortenertest-windows-amd64 -test.v -test.run=^TestIteration2$ -source-path=C:\go\shorturl\internal\app\handlers\event-handlers\event-processor_test.go
 
 // go install github.com/golang/mock/mockgen@latest
 // mockgen -destination=internal/app/adapters/storages/gomock/gomockstor.go -package=gomockstor github.com/d5kx/shorturl/internal/app/usecases LinkStorage,DB
 
 // go run main.go -l debug -f tmp/short-url-db.json -d "host=localhost port=5432 user=postgres password=820610 dbname=shorturl sslmode=disable"
+// go run main.go -l debug -f tmp/short-url-db.json -fusers tmp/users-db.json
 
 func init() {
 	conf.ParseFlags()
@@ -39,28 +36,40 @@ func init() {
 func main() {
 	sl := simplelogger.New()
 
-	zl, err := zaplogger.New()
+	logger, err := zaplogger.New()
 	if err != nil {
 		sl.Fatal("can't run zap loggers", err)
 	}
 
-	m := memstor.New(zl)
-	f := filestor.New(zl)
-	p := postgre.New(zl)
-	manager := storman.New(m, f, p, zl)
-	manager.Open("")
-	defer manager.Close()
-	manager.Bootstrap(context.Background())
+	m := memstor.New(logger)
+	p := postgre.New(logger)
 
-	u := uselink.New(manager, basegen.New(), zl)
-	postgUse := usedb.New(p)
-	compressor := gzipc.New(zl)
+	storage := storman.New(m, p, logger)
+	storage.Open()
+	defer storage.Close()
+	storage.Bootstrap(context.Background())
+	workingStorage := storage.WorkingStorage()
 
-	handler := basehandler.New(u, postgUse, zl)
-	router := baserouter.New(handler, compressor, zl)
-	server := baseserver.New(router, zl)
-	if err := server.Run(); err != nil {
-		sl.Fatal("can't run service", err)
+	generator := basegen.New()
+	useLink := uselink.New(workingStorage, generator, logger)
+	useDB := usedb.New(p)
+	useUser := useuser.New(workingStorage, generator, logger)
+	compressor := gzipc.New(logger)
+	auth := baseauth.New(generator, logger)
+	auth.GenerateTLSCertificate()
+
+	handler := basehandler.New(useLink, useUser, useDB, logger)
+	router := baserouter.New(handler, compressor, auth, logger)
+	server := baseserver.New(router, workingStorage, logger)
+
+	// канал приема системных сигналов
+	//quitCh := make(chan os.Signal, 1)
+	//signal.Notify(quitCh, os.Interrupt, syscall.SIGTERM)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	if err := server.Run(ctx); err != nil {
+		logger.Info("can't run service", zap.Error(err))
+		os.Exit(1)
 	}
-
 }

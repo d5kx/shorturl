@@ -1,6 +1,16 @@
 package e
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrSaveUniqueViolation = errors.New("index uniqueness conflict")
+	ErrAuthTokenNotValid   = errors.New("auth token not valid")
+	ErrUnexpSigningMethod  = errors.New("unexpected signing method")
+	ErrAuthTokenParse      = errors.New("auth token parsing error")
+)
 
 func WrapError(msg string, err error) error {
 	return fmt.Errorf("%s: %w", msg, err)

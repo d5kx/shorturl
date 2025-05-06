@@ -59,22 +59,24 @@ func (z *ZapLogger) init(level string) error {
 func (z *ZapLogger) RequestLogging(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-
+		z.zap.Debug("== START MIDDLEWARE ==")
 		responseData := responseData{status: 0, size: 0}
 		lw := logResponseWriter{ResponseWriter: w, responseData: &responseData}
 		next.ServeHTTP(&lw, r)
 
 		duration := time.Since(start)
 		z.zap.Info("got incoming HTTP request",
-			zap.String("uri", r.RequestURI),
 			zap.String("method", r.Method),
+			zap.String("uri", r.RequestURI),
 			zap.String("Content-type", r.Header.Get("Content-type")),
 			zap.String("Accept-Encoding", r.Header.Get("Accept-Encoding")),
 			zap.String("Content-Encoding", r.Header.Get("Content-Encoding")),
 			zap.Int("status", responseData.status),
 			zap.Int("size", responseData.size),
 			zap.Duration("duration", duration),
+			zap.Any("cookies", r.Cookies()),
 		)
+		z.zap.Debug("== STOP MIDDLEWARE ==")
 	}
 }
 

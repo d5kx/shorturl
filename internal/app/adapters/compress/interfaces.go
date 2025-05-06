@@ -5,5 +5,5 @@ import (
 )
 
 type Compressor interface {
-	RequestCompress(http.HandlerFunc) http.HandlerFunc
+	Do(http.HandlerFunc) http.HandlerFunc
 }

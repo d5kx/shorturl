@@ -2,8 +2,15 @@ package basehandler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	usedb "github.com/d5kx/shorturl/internal/app/usecases/db"
+	"errors"
+	"fmt"
+	"github.com/d5kx/shorturl/internal/app/usecases/db"
+	useuser "github.com/d5kx/shorturl/internal/app/usecases/user"
+	"github.com/d5kx/shorturl/internal/util/e"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"net/http"
 	"strings"
@@ -18,131 +25,442 @@ import (
 
 type Handler struct {
 	linkUse *uselink.UseCases
+	userUse *useuser.UseCases
 	dbUse   *usedb.UseCases
 	log     loggers.Logger
 }
 
-func New(useCase *uselink.UseCases, dbUse *usedb.UseCases, logger loggers.Logger) *Handler {
+func New(
+	useLink *uselink.UseCases,
+	useUser *useuser.UseCases,
+	dbUse *usedb.UseCases,
+	logger loggers.Logger,
+) *Handler {
 	return &Handler{
-		linkUse: useCase,
+		linkUse: useLink,
+		userUse: useUser,
 		log:     logger,
 		dbUse:   dbUse,
 	}
 }
 
+func (h *Handler) GetHTTPS(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	fmt.Fprintf(res, "Proudly served with Go and HTTPS!")
+
+}
+
+// Get хендлер для получения оригинального адреса ссылки
 func (h *Handler) Get(res http.ResponseWriter, req *http.Request) {
+	// получаем короткую ссылку из адреса запроса
 	short := strings.TrimPrefix(req.URL.Path, "/")
+	// получаем заполненный объект ссылки
 	l, err := h.linkUse.Get(req.Context(), short)
 	if err != nil || l == nil {
 		h.log.Debug("can't process GET request",
 			zap.String("short", short),
 			zap.Error(err),
 		)
-		res.WriteHeader(http.StatusBadRequest)
-
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// если ссылка помечена в БД как удаленная
+	if l.DeletedFlag {
+		res.Header().Set("Content-Type", "text/plain")
+		res.WriteHeader(http.StatusGone)
 		return
 	}
 
+	// пишем ответ, переадресация по оригинальному адресу
 	res.Header().Set("Location", l.OriginalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
-	if !h.checkContentType(req, "text/plain") && !h.checkContentType(req, "application/x-gzip") {
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	var buf bytes.Buffer
-	buf.ReadFrom(req.Body)
-	defer req.Body.Close()
-	if buf.Len() == 0 {
-		h.log.Debug("can't process POST request (no link in body request)", zap.String("body", buf.String()))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	sURL, err := h.linkUse.Save(req.Context(), buf.String())
+// GetUserUrls хендлер для получения списка всех ссылок пользователя
+func (h *Handler) GetUserUrls(res http.ResponseWriter, req *http.Request) {
+	// получаем идентификатор пользователя из контекста
+	v := req.Context().Value("user_id")
+	// получаем массив указателей на ссылки пользователя
+	links, err := h.linkUse.GetUserUrls(req.Context(), v.(string))
 	if err != nil {
-		h.log.Debug("can't process POST request (short link is not saved)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		h.log.Debug("can't process GET request",
+			zap.String("user_id", v.(string)),
+			zap.Error(err),
+		)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
-	buf.Reset()
-	buf.WriteString(conf.GetResURLAdr() + "/")
-	buf.WriteString(sURL)
-
-	res.Header().Set("Content-Type", "text/plain")
-	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write(buf.Bytes())
+	// если сохраненных ссылок у пользователя нет
+	if len(links) == 0 {
+		http.Error(res, "links not found", http.StatusNoContent)
+		return
+	}
+	// добавляем адрес сервера
+	pref := "http://" + conf.GetServAdr() + "/"
+	for k, _ := range links {
+		links[k].ShortURL = pref + links[k].ShortURL
+	}
+	// сериализуем в JSON массив ссылок, uuid получаем пустым, в сериализацию не попадает
+	jsonByte, err := json.Marshal(links)
 	if err != nil {
-		h.log.Debug("can't process POST request (can't write response body)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		h.logBadRequest(res, "can't process GET request (can't encode response)", err)
+		return
+	}
+	// пишем заголовки и тело ответа
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		h.logBadRequest(res, "can't process GET request (can't write response JSON body)", err)
 		return
 	}
 }
 
+// Post хендлер для добавления одной ссылки и получения одной короткой ссылки
+func (h *Handler) Post(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
+	if !h.checkContentType(req, "text/plain") && !h.checkContentType(req, "application/x-gzip") {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// читаем оригинальную ссылку из тела запроса
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(req.Body)
+	if err != nil {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	defer req.Body.Close()
+	// если данных в теле запроса нет
+	if buf.Len() == 0 {
+		h.logBadRequest(res, "can't process POST request (body is empty)", nil)
+		return
+	}
+	// получаем оригинальную ссылку в виде строки
+	originalUrl := buf.String()
+	// получаем user_id из контекста запроса
+	userId := req.Context().Value("user_id")
+	//пытаемся сохранить оригинальную ссылку с идентификатором пользователя
+	sURL, err := h.linkUse.Save(req.Context(), originalUrl, userId.(string))
+	if err != nil {
+		var pgErr *pgconn.PgError
+		// если ошибки нарушения уникальности, оригинальная ссылка уже существует
+		if errors.Is(err, e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) &&
+			pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
+			// получаем существующую короткую ссылку
+			l, err := h.linkUse.GetShort(req.Context(), originalUrl)
+			if err != nil || l == nil {
+				h.logBadRequest(res, "can't process GetShort request: original ="+originalUrl, err)
+				return
+			}
+			// пишем ответ с существующей короткой ссылкой
+			h.writePostResponse(res, l.ShortURL, http.StatusConflict)
+			return
+		}
+		// если неконкретизированные ошибки
+		h.logBadRequest(res, "can't process POST request (short link is not saved)", err)
+		return
+	}
+	// ошибок нет, пишем ответ с новой короткой ссылкой
+	h.writePostResponse(res, sURL, http.StatusCreated)
+}
+
+// PostAPIShorten хендлер для добавления одной ссылки и получения одной короткой ссылки в json формате
 func (h *Handler) PostAPIShorten(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
 	if !h.checkContentType(req, "application/json") {
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	// десериализуем запрос в структуру модели
+	// десериализируем запрос в структуру
 	var request models.RequestJSON
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&request); err != nil {
-		h.log.Debug("can't decode request JSON body", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
+		h.logBadRequest(res, "can't decode request JSON body", err)
 		return
 	}
-
-	sURL, err := h.linkUse.Save(req.Context(), request.URL)
+	// получаем user_id из контекста запроса
+	userId := req.Context().Value("user_id")
+	//пытаемся сохранить оригинальную ссылку с идентификатором пользователя
+	sURL, err := h.linkUse.Save(req.Context(), request.URL, userId.(string))
 	if err != nil {
-		h.log.Debug("can't process POST request (short link is not saved in the database)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	// заполняем модель ответа
-	var response = models.ResponseJSON{
-		Result: conf.GetResURLAdr() + "/" + sURL,
-	}
-
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	// сериализуем ответ сервера
-	jsonByte, err := json.Marshal(response)
-	if err != nil {
-		h.log.Debug("can't process POST request (can't encode response)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	_, err = res.Write(jsonByte)
-	if err != nil {
-		h.log.Debug("can't process POST request (can't write response JSON body)", zap.Error(err))
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	/*
-		enc := json.NewEncoder(res)
-		if err := enc.Encode(response); err != nil {
-			p.loggers.Debug("can't encode response", zap.Error(err))
-			res.WriteHeader(http.StatusBadRequest)
+		var pgErr *pgconn.PgError
+		// если ошибки нарушения уникальности, оригинальная ссылка уже существует
+		if errors.Is(err, e.ErrSaveUniqueViolation) || (errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code)) {
+			// получаем существующую короткую ссылку
+			l, err := h.linkUse.GetShort(req.Context(), request.URL)
+			if err != nil || l == nil {
+				h.logBadRequest(res, "can't process GetShort request: original ="+request.URL, err)
+				return
+			}
+			// пишем ответ с существующей короткой ссылкой
+			h.writePostJsonResponse(res, l.ShortURL, http.StatusConflict)
 			return
-		}*/
+		}
+		// если неконкретизированные ошибки
+		h.logBadRequest(res, "can't process POST request (short link is not saved in the database)", err)
+		return
+	}
+	// ошибок нет, пишем ответ с новой короткой ссылкой
+	h.writePostJsonResponse(res, sURL, http.StatusCreated)
 }
 
+// PostAPIShortenBatch хендлер для добавления пачки ссылок и получения пачки коротких ссылок в json формате
+func (h *Handler) PostAPIShortenBatch(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
+	if !h.checkContentType(req, "application/json") {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	var (
+		responseSlice []models.ResponseJSONBatch // слайс моделей для ответа
+		originalURLs  []string                   // слайс оригинальных ссылок
+	)
+
+	dec := json.NewDecoder(req.Body)
+	// читаем "[" в json массиве
+	_, err := dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+	// читаем поэлементно json массив
+	for dec.More() {
+		var request models.RequestJSONBatch
+		if err := dec.Decode(&request); err != nil {
+			h.logBadRequest(res, "can't decode request JSON body", err)
+			return
+		}
+		// сохраняем оригинальные ссылки
+		originalURLs = append(originalURLs, request.OriginalURL)
+		// заполняем слайс моделей для ответа, пока без коротких ссылок
+		responseSlice = append(responseSlice, models.ResponseJSONBatch{
+			CorrelationId: request.CorrelationId,
+			ShortURL:      "",
+		})
+	}
+	// читаем "]" в json массиве
+	_, err = dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+	// запрос и ответ пустые
+	if len(responseSlice) == 0 {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// получаем user_id из контекста запроса
+	userId := req.Context().Value("user_id")
+	// пытаемся сохранить транзакцией в базу данных оригинальные ссылки
+	// в ответ получаем слайс коротких ссылок
+	sURLs, err := h.linkUse.SaveTx(req.Context(), originalURLs, userId.(string))
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (short link is not saved in the database)", err)
+		return
+	}
+	// заполняем короткие ссылки в слайсе моделей ответа
+	for k, _ := range responseSlice {
+		responseSlice[k].ShortURL = sURLs[k]
+	}
+	// сериализируем в json слайс моделей ответа
+	jsonByte, err := json.Marshal(responseSlice)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't encode response)", err)
+		return
+	}
+	// пишем заголовки и тело ответа
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
+		return
+	}
+}
+
+// DeleteUserUrls помечает ссылки в БД как удаленные для данного пользователя
+// Ссылки приходят в теле запроса в виде json массива
+func (h *Handler) DeleteUserUrls(res http.ResponseWriter, req *http.Request) {
+	// проверяем содержание требуемого типа в строке Content-type запроса
+	if !h.checkContentType(req, "application/json") {
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// декодер json
+	dec := json.NewDecoder(req.Body)
+	// читаем "[" в json массиве
+	_, err := dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+	//var buf bytes.Buffer
+	var shortUrls []string
+	// читаем и декодируем поэлементно json массив
+	for dec.More() {
+		var request string
+		if err := dec.Decode(&request); err != nil {
+			h.logBadRequest(res, "can't decode request JSON body", err)
+			return
+		}
+		shortUrls = append(shortUrls, request)
+		//buf.WriteString(request)
+	}
+	// читаем "]" в json массиве
+	_, err = dec.Token()
+	if err != nil {
+		h.logBadRequest(res, "can't decode request JSON body", err)
+		return
+	}
+
+	//получаем user_id из контекста запроса
+	userId := req.Context().Value("user_id")
+	// отправляем массив коротких ссылок на "удаление"
+	err = h.linkUse.DeleteUserUrls(req.Context(), shortUrls, userId.(string))
+	if err != nil {
+		h.logBadRequest(res, "can't process DELETE request", err)
+		return
+	}
+	// пишем заголовки и тело ответа
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusAccepted)
+	//res.Write(buf.Bytes())
+}
+
+// PingDB хендлер для проверки соединения с базой данных
 func (h *Handler) PingDB(res http.ResponseWriter, req *http.Request) {
+	// пинганули успешно, шлем 200 ОК, выходим
 	if h.dbUse.Ping(req.Context()) {
 		res.WriteHeader(http.StatusOK)
 		return
 	}
-	res.WriteHeader(http.StatusInternalServerError)
+	// не пинганули, отправляем ошибку
+	http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+}
+
+// PostAPIUserRegister регистрирует нового пользователя по логину/паролю в json формате,
+// если успешно авторизует, то выдает подписанную куку
+// Формат запроса:
+//
+// POST /api/user/register HTTP/1.1, Content-Type: application/json
+//
+//	{ "login": "<login>", "password": "<password>" }
+//
+// Возможные коды ответа:
+// 200 — пользователь успешно зарегистрирован и аутентифицирован;
+// 400 — неверный формат запроса;
+// 409 — логин уже занят;
+// 500 — внутренняя ошибка сервера.
+func (h *Handler) PostAPIUserRegister(next http.HandlerFunc) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// проверяем содержание требуемого типа в строке Content-type запроса
+		if !h.checkContentType(req, "application/json") {
+			http.Error(res, "", http.StatusBadRequest)
+			return
+		}
+
+		// десериализируем запрос в структуру
+		userJSON, err := decode[models.UserLoginJSON](req)
+		if err != nil {
+			h.logBadRequest(res, "POST request error", err)
+			return
+		}
+
+		// проверяем наличие пользователя с таким логином
+		exist, err := h.userUse.UserExist(req.Context(), userJSON.Login)
+		//ошибка выполнения запроса к БД
+		if err != nil {
+			http.Error(res, "", http.StatusInternalServerError)
+			return
+		}
+		// пользователь уже существует
+		if exist {
+			h.log.Debug("user already exists",
+				zap.Any("user", userJSON),
+			)
+			http.Error(res, "", http.StatusConflict)
+			return
+		}
+		// сохраняем пользователя в БД
+		user, err := h.userUse.UserSave(req.Context(), userJSON.Login, userJSON.Password)
+		if err != nil {
+			http.Error(res, "", http.StatusInternalServerError)
+			h.log.Debug("can't process POST request (user is not saved in the database)", zap.Error(err))
+			return
+		}
+		//захватываем контекст запроса
+		ctx := req.Context()
+		//будем передавать user_id по цепочке middleware через контекст
+		h.log.Debug("send to middleware", zap.String("user_ud", user.UUID))
+		ctx = context.WithValue(ctx, "user_id", user.UUID)
+		// передаём управление следующему хендлеру, который выдаст пользователю подписанную куку
+		next.ServeHTTP(res, req.WithContext(ctx))
+
+		//пользователь успешно зарегистрирован
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
+// PostAPIUserLogin авторизует пользователя по логину/паролю в json формате, выдает подписанную куку.
+// Формат запроса:
+//
+// POST /api/user/login HTTP/1.1, Content-Type: application/json
+//
+//	{ "login": "<login>", "password": "<password>" }
+//
+// Коды ответа:
+// 200 — пользователь успешно аутентифицирован;
+// 400 — неверный формат запроса;
+// 401 — неверная пара логин/пароль;
+// 500 — внутренняя ошибка сервера.
+func (h *Handler) PostAPIUserLogin(next http.HandlerFunc) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// проверяем содержание требуемого типа в строке Content-type запроса
+		if !h.checkContentType(req, "application/json") {
+			http.Error(res, "", http.StatusBadRequest)
+			return
+		}
+
+		// десериализируем запрос в структуру
+		userJSON, err := decode[models.UserLoginJSON](req)
+		if err != nil {
+			h.logBadRequest(res, "POST request error", err)
+			return
+		}
+
+		//извлекаем пользователя из БД
+		user, valid, err := h.userUse.UserAuth(req.Context(), userJSON.Login, userJSON.Password)
+		if err != nil {
+			http.Error(res, "", http.StatusInternalServerError)
+			h.log.Debug("POST request error (user not retrieved from database)", zap.Error(err))
+			return
+		}
+
+		// неверная пара логин/пароль или такого пользователя не существует
+		if !valid {
+			http.Error(res, "", http.StatusUnauthorized)
+			return
+		}
+
+		//захватываем контекст запроса
+		ctx := req.Context()
+		//будем передавать user_id по цепочке middleware через контекст
+		h.log.Debug("send to middleware", zap.String("user_ud", user.UUID))
+		ctx = context.WithValue(ctx, "user_id", user.UUID)
+		// передаём управление следующему хендлеру, который выдаст пользователю подписанную куку
+		next.ServeHTTP(res, req.WithContext(ctx))
+
+		//пользователь успешно авторизирован
+		res.WriteHeader(http.StatusOK)
+	}
 }
 
 func (h *Handler) BadRequest(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusBadRequest)
+	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 
 func (h *Handler) checkContentType(req *http.Request, t string) bool {
@@ -155,4 +473,59 @@ func (h *Handler) checkContentType(req *http.Request, t string) bool {
 		return false
 	}
 	return true
+}
+
+func (h *Handler) logBadRequest(res http.ResponseWriter, mes string, err error) {
+	h.log.Debug(mes, zap.Error(err))
+	http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+}
+
+func (h *Handler) writePostResponse(res http.ResponseWriter, data string, successStatus int) {
+	var buf bytes.Buffer
+
+	buf.WriteString(conf.GetResURLAdr() + "/")
+	buf.WriteString(data)
+	res.Header().Set("Content-Type", "text/plain")
+	res.WriteHeader(successStatus)
+	_, err := res.Write(buf.Bytes())
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't write response body)", err)
+	}
+}
+
+func (h *Handler) writePostJsonResponse(res http.ResponseWriter, data string, successStatus int) {
+	var response = models.ResponseJSON{
+		Result: conf.GetResURLAdr() + "/" + data,
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(successStatus)
+	// сериализуем ответ сервера
+	jsonByte, err := json.Marshal(response)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (json marshal error)", err)
+		return
+	}
+	_, err = res.Write(jsonByte)
+	if err != nil {
+		h.logBadRequest(res, "can't process POST request (can't write response JSON body)", err)
+		return
+	}
+}
+
+// decode декодирует json тело запроса в структуру
+func decode[T any](req *http.Request) (T, error) {
+	var v T
+	if err := json.NewDecoder(req.Body).Decode(&v); err != nil {
+		return v, e.WrapError("can't decode json", err)
+	}
+	return v, nil
+}
+
+// encode кодирует струтуру в json тело ответа
+func encode[T any](res http.ResponseWriter, v T) error {
+	if err := json.NewEncoder(res).Encode(v); err != nil {
+		return e.WrapError("can't encode json", err)
+	}
+	return nil
 }
