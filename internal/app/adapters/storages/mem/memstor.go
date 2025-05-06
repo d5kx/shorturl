@@ -109,13 +109,19 @@ func (s *Storage) Shutdown(ctx context.Context) error {
 	// записываем файл со ссылками
 	go func() {
 		defer wg.Done()
-		writeMapToFile[entities.Link](conf.GetDBFileName(), s.linksDB, s.log)
+		err := writeMapToFile[entities.Link](conf.GetDBFileName(), s.linksDB, s.log)
+		if err != nil {
+			return
+		}
 	}()
 
 	// записываем файл с пользователями
 	go func() {
 		defer wg.Done()
-		writeMapToFile[entities.User](conf.GetUsersFileName(), s.usersDB, s.log)
+		err := writeMapToFile[entities.User](conf.GetUsersFileName(), s.usersDB, s.log)
+		if err != nil {
+			return
+		}
 	}()
 	//ждем все записывающие горутины
 	wg.Wait()
@@ -137,12 +143,18 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 	//загружаем файл со ссылками
 	go func() {
 		defer wg.Done()
-		readFileToMap[entities.Link](conf.GetDBFileName(), s.linksDB, 1, s.log)
+		err := readFileToMap[entities.Link](conf.GetDBFileName(), s.linksDB, 1, s.log)
+		if err != nil {
+			return
+		}
 	}()
 	//загружаем файл с пользователями
 	go func() {
 		defer wg.Done()
-		readFileToMap[entities.User](conf.GetUsersFileName(), s.usersDB, 1, s.log)
+		err := readFileToMap[entities.User](conf.GetUsersFileName(), s.usersDB, 1, s.log)
+		if err != nil {
+			return
+		}
 	}()
 	//ждем читающие горутины
 	wg.Wait()
@@ -150,11 +162,11 @@ func (s *Storage) Bootstrap(ctx context.Context) error {
 }
 
 // writeMapToFile дженерик, записывает содержимое мапы в файл
-func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logger) {
+func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logger) error {
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0666)
-
 	if err != nil {
-		log.Debug("can't open file", zap.String("file", fileName), err)
+		log.Debug("can't open file", zap.String("file", fileName), zap.Error(err))
+		return err
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
@@ -169,29 +181,30 @@ func writeMapToFile[T any](fileName string, data map[string]*T, log loggers.Logg
 	var c int //Счетчик сохраненных записей
 	for i, _ := range data {
 		if err = encoder.Encode(data[i]); err != nil {
-			log.Debug("can't encode json when saving to file", zap.String("file", fileName), err)
+			log.Debug("can't encode json when saving to file", zap.String("file", fileName), zap.Error(err))
+			return err
 		}
 		c++
 	}
 	//сбрасываем буфер в файл
 	if err = writer.Flush(); err != nil {
 		log.Info("error in Flush() when saving to file ", zap.String("file", fileName), zap.Error(err))
+		return err
 	}
 	// логируем результаты записи в файл
-	if err == nil {
-		log.Info("file was written without errors", zap.String("file", conf.GetDBFileName()), zap.Int("records", c))
-	} else {
-		log.Info("file was written with errors", zap.String("file", conf.GetDBFileName()), zap.Error(err))
-	}
+	log.Info("file was written without errors", zap.String("file", conf.GetDBFileName()), zap.Int("records", c))
+
+	return nil
 }
 
 // readFileToMap дженерик, читает содержимое файла в мапу, использует рефлексию,
 // keyField - индекс поля структуры для ключа мапы
-func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, log loggers.Logger) {
+func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, log loggers.Logger) error {
 
 	file, err := os.OpenFile(fileName, os.O_RDONLY, 0666)
 	if err != nil {
 		log.Info("can't open file", zap.String("file", fileName), zap.Error(err))
+		return err
 	}
 	defer func() {
 		if err = file.Close(); err != nil {
@@ -205,7 +218,8 @@ func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, 
 		var l T
 		err = json.Unmarshal(data, &l)
 		if err != nil {
-			log.Debug("can't decode json when reading from file", zap.String("file", fileName), err)
+			log.Debug("can't decode json when reading from file", zap.String("file", fileName), zap.Error(err))
+			return err
 		}
 		v := reflect.ValueOf(l).Field(keyField)
 		dataMap[v.String()] = &l
@@ -214,11 +228,10 @@ func readFileToMap[T any](fileName string, dataMap map[string]*T, keyField int, 
 
 	if err := scanner.Err(); err != nil {
 		log.Info("file scanning error when loaf from file", zap.String("file", fileName), zap.Error(err))
+		return err
 	}
 	// логируем результаты загрузки из файла
-	if err == nil {
-		log.Info("file was loaded without errors", zap.String("file", fileName), zap.Int("records", i))
-	} else {
-		log.Info("file was loaded with errors", zap.String("file", fileName), zap.Error(err))
-	}
+	log.Info("file was loaded without errors", zap.String("file", fileName), zap.Int("records", i))
+
+	return nil
 }

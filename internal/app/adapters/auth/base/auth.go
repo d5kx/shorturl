@@ -15,7 +15,6 @@ import (
 	"github.com/d5kx/shorturl/internal/util/generators"
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/zap"
-	"log"
 	"math/big"
 	"net/http"
 	"os"
@@ -173,7 +172,7 @@ func (a *Auth) getUserID(tokenString string) (string, error) {
 	return claimsObj.UserID, nil
 }
 
-// GenerateTLSCertificate генерирует самоподписанный TLS сертификат
+// GenerateTLSCertificate генерирует самоподписанный TLS сертификат и приватный ключ
 func (a *Auth) GenerateTLSCertificate() error {
 	// генерируем приватный ключ на основе эллиптических кривых
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -218,24 +217,24 @@ func (a *Auth) GenerateTLSCertificate() error {
 	}
 
 	if err := os.WriteFile(conf.GetTSLCertFileName(), pemCert, 0644); err != nil {
-		a.log.Debug("failed to write cert.pem", zap.Error(err))
+		a.log.Debug("can't write file", zap.String("file", conf.GetTSLCertFileName()), zap.Error(err))
 		return err
 	}
-	a.log.Debug("wrote " + conf.GetTSLCertFileName())
+	a.log.Debug("write file ", zap.String("file", conf.GetTSLCertFileName()))
 
 	// сохраняем приватный ключ в файл
 	privBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
-		log.Fatalf("Unable to marshal private key: %v", err)
+		a.log.Debug("unable to marshal private key", zap.Error(err))
 	}
 	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
 	if pemKey == nil {
-		a.log.Debug("Failed to encode key to PEM")
+		a.log.Debug("failed to encode key to PEM")
 	}
 	if err := os.WriteFile(conf.GetTSLKeyFileName(), pemKey, 0600); err != nil {
-		a.log.Debug("failed to write key.pem", zap.Error(err))
+		a.log.Debug("can't write file", zap.String("file", conf.GetTSLKeyFileName()), zap.Error(err))
 		return err
 	}
-	a.log.Debug("wrote " + conf.GetTSLKeyFileName())
+	a.log.Debug("write file ", zap.String("file", conf.GetTSLKeyFileName()))
 	return nil
 }

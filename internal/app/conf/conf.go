@@ -13,8 +13,8 @@ type flags struct {
 	flagLoggerLevel                string // Уровень логирования
 	flagDBFileName                 string // Файл для сохранения ссылок из хранилища в памяти
 	flagUsersFileName              string // Файл для сохранения пользователей из хранилища в памяти
-	flagTSLCertFileName            string
-	flagTSLKeyFileName             string
+	flagTSLCertFileName            string // Файл для TSL сертификата
+	flagTSLKeyFileName             string // Файл для TSL ключа
 	flagPostgreSQLConnectionString string
 }
 
